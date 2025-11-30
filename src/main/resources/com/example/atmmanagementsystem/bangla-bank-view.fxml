@@ -3,39 +3,84 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox prefHeight="600" spacing="12.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.atmmanagementsystem.BanglaBankController">
-  <padding>
-    <Insets top="16" right="16" bottom="16" left="16"/>
-  </padding>
+<StackPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.atmmanagementsystem.BanglaBankController">
+  <children>
+    <VBox prefHeight="600" spacing="12.0">
+      <padding>
+        <Insets top="16" right="16" bottom="16" left="16"/>
+      </padding>
+      <Label text="Bangla Bank ATM" style="-fx-font-size:20px; -fx-font-weight:bold;" />
 
-  <Label text="Create New Account" style="-fx-font-size:16px; -fx-font-weight:bold;"/>
+      <!-- Welcome pane -->
+      <VBox fx:id="welcomePane" spacing="8">
+        <Label text="Welcome! Insert your card or apply for a new card." wrapText="true"/>
+        <GridPane hgap="8" vgap="8">
+          <columnConstraints>
+            <ColumnConstraints minWidth="120" />
+            <ColumnConstraints hgrow="ALWAYS" />
+          </columnConstraints>
+          <Label text="Card number:" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+          <TextField fx:id="cardInput" promptText="Enter 16-digit card number" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+          <Label fx:id="welcomeError" style="-fx-text-fill:red;" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+          <Button text="Insert Card" onAction="#onInsertCard" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+          <Button text="New user? Apply card" onAction="#onApplyCard" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+        </GridPane>
+      </VBox>
 
-  <GridPane hgap="8" vgap="8">
-    <columnConstraints>
-      <ColumnConstraints minWidth="120" />
-      <ColumnConstraints hgrow="ALWAYS" />
-    </columnConstraints>
+      <!-- Login pane -->
+      <VBox fx:id="loginPane" spacing="8" visible="false" managed="false">
+        <Label text="Enter PIN to login" style="-fx-font-weight:bold;" />
+        <GridPane hgap="8" vgap="8">
+          <columnConstraints>
+            <ColumnConstraints minWidth="120" />
+            <ColumnConstraints hgrow="ALWAYS" />
+          </columnConstraints>
+          <Label text="Card:" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+          <Label fx:id="cardLabel" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+          <Label text="PIN:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+          <PasswordField fx:id="pinField" promptText="4-digit PIN" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+          <Label fx:id="loginError" style="-fx-text-fill:red;" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+          <Button text="Login" onAction="#onLogin" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+          <Button text="Cancel" onAction="#onCancelLogin" GridPane.rowIndex="4" GridPane.columnIndex="1" />
+        </GridPane>
+      </VBox>
 
-    <Label text="Full name:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-    <TextField fx:id="nameField" promptText="Samiul Hasan" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+      <!-- Create account pane -->
+      <VBox fx:id="createPane" spacing="8" visible="false" managed="false">
+        <Label text="Create New Account" style="-fx-font-size:16px; -fx-font-weight:bold;"/>
+        <GridPane hgap="8" vgap="8">
+          <columnConstraints>
+            <ColumnConstraints minWidth="120" />
+            <ColumnConstraints hgrow="ALWAYS" />
+          </columnConstraints>
 
-    <Label text="Phone number:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-    <TextField fx:id="phoneField" promptText="01788058690" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+          <Label text="Full name:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+          <TextField fx:id="nameField" promptText="Samiul Hasan" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
-    <Label text="Initial deposit:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-    <TextField fx:id="depositField" promptText="150.00" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+          <Label text="Phone number:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+          <TextField fx:id="phoneField" promptText="01788058690" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-    <Label fx:id="errorLabel" style="-fx-text-fill: red;" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+          <Label text="Initial deposit:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+          <TextField fx:id="depositField" promptText="150.00" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
-    <Button text="Create Account" onAction="#onCreateAccount" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
-  </GridPane>
+          <Label fx:id="errorLabel" style="-fx-text-fill: red;" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
-  <Label text="Result / Stored Accounts:" style="-fx-font-weight:bold;"/>
-  <TextArea fx:id="outputArea" editable="false" wrapText="true" prefRowCount="20" />
-</VBox>
+          <Button text="Create Account" onAction="#onCreateAccount" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+          <Button text="Back to Welcome" onAction="#onBackToWelcome" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+        </GridPane>
+
+        <Label text="Result / Stored Accounts:" style="-fx-font-weight:bold;"/>
+        <TextArea fx:id="outputArea" editable="false" wrapText="true" prefRowCount="10" />
+        <Label fx:id="createResultLabel" style="-fx-font-weight:bold; -fx-text-fill: green;" />
+      </VBox>
+    </VBox>
+  </children>
+</StackPane>

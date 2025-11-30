@@ -14,8 +14,14 @@ public class BanglaBankApplication extends Application {
         Scene scene = new Scene(fxmlLoader.load(), 320, 240);
         stage.setTitle("Bangla Bank - Management System");
         stage.setScene(scene);
-        stage.show();
+        // set minimum size
         stage.setMinWidth(550);
         stage.setMinHeight(600);
+
+        // maximize and start in fullscreen
+        stage.setMaximized(true);
+        stage.setFullScreen(true);
+
+        stage.show();
     }
 }
