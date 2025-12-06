@@ -17,13 +17,13 @@
   <children>
     <VBox alignment="CENTER" spacing="20.0">
       <children>
-        <VBox alignment="TOP_CENTER" spacing="0" styleClass="atm-shell" maxWidth="500">
+        <VBox alignment="TOP_CENTER" spacing="0" styleClass="atm-shell" maxWidth="600">
             <padding>
                 <Insets top="30" right="30" bottom="30" left="30" />
             </padding>
 
             <!-- Header -->
-            <Label text="SECURE BANK ATM" styleClass="atm-title" />
+            <Label text="Bangla Bank ATM" styleClass="atm-title" />
             
             <Region prefHeight="20" />
 
@@ -32,21 +32,56 @@
                 <children>
                     <!-- Left Side Buttons -->
                     <VBox spacing="15" alignment="CENTER_LEFT" styleClass="side-buttons-container">
-                        <Button text="" mnemonicParsing="false" styleClass="side-btn, side-btn-left" />
-                        <Button text="" mnemonicParsing="false" styleClass="side-btn, side-btn-left" />
-                        <Button text="" mnemonicParsing="false" styleClass="side-btn, side-btn-left" />
-                        <Button text="" mnemonicParsing="false" styleClass="side-btn, side-btn-left" />
+                        <Button text="" onAction="#onSideBtnLeft1" mnemonicParsing="false" styleClass="side-btn, side-btn-left" />
+                        <Button text="" onAction="#onSideBtnLeft2" mnemonicParsing="false" styleClass="side-btn, side-btn-left" />
+                        <Button text="" onAction="#onSideBtnLeft3" mnemonicParsing="false" styleClass="side-btn, side-btn-left" />
+                        <Button text="" onAction="#onSideBtnLeft4" mnemonicParsing="false" styleClass="side-btn, side-btn-left" />
                     </VBox>
 
                     <!-- Screen -->
                     <StackPane styleClass="screen-frame">
                         <children>
-                            <VBox alignment="CENTER_LEFT" spacing="10" styleClass="screen-inner">
+                            <VBox alignment="CENTER" spacing="5" styleClass="screen-inner">
                                 <padding>
-                                    <Insets top="20" right="20" bottom="20" left="20" />
+                                    <Insets top="10" right="10" bottom="10" left="10" />
                                 </padding>
                                 <Label text="WELCOME" styleClass="screen-welcome" />
-                                <Label fx:id="screenMessage" text="Please enter your card number" wrapText="true" styleClass="screen-text" />
+                                <Label fx:id="screenMessage" text="Please select an option" wrapText="true" styleClass="screen-text" prefHeight="45" minHeight="45" alignment="CENTER" />
+                                
+                                <Region prefHeight="5" />
+
+                                <!-- Option Rows -->
+                                <VBox spacing="25" alignment="CENTER">
+                                    <!-- Row 1 -->
+                                    <HBox alignment="CENTER_LEFT" spacing="10" minHeight="30" prefHeight="30">
+                                        <Label fx:id="optionLeft1" text="Create Account" styleClass="screen-option-left" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                                        <Region HBox.hgrow="ALWAYS" />
+                                        <Label fx:id="optionRight1" text="Forgot PIN" styleClass="screen-option-right" maxWidth="Infinity" HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT" />
+                                    </HBox>
+
+                                    <!-- Row 2 -->
+                                    <HBox alignment="CENTER_LEFT" spacing="10" minHeight="30" prefHeight="30">
+                                        <Label fx:id="optionLeft2" text="Insert Card" styleClass="screen-option-left" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                                        <Region HBox.hgrow="ALWAYS" />
+                                        <Label fx:id="optionRight2" text="Deposit Cash" styleClass="screen-option-right" maxWidth="Infinity" HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT" />
+                                    </HBox>
+
+                                    <!-- Row 3 -->
+                                    <HBox alignment="CENTER_LEFT" spacing="10" minHeight="30" prefHeight="30">
+                                        <Label fx:id="optionLeft3" text="" styleClass="screen-option-left" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                                        <Region HBox.hgrow="ALWAYS" />
+                                        <Label fx:id="optionRight3" text="" styleClass="screen-option-right" maxWidth="Infinity" HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT" />
+                                    </HBox>
+
+                                    <!-- Row 4 -->
+                                    <HBox alignment="CENTER_LEFT" spacing="10" minHeight="30" prefHeight="30">
+                                        <Label fx:id="optionLeft4" text="" styleClass="screen-option-left" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                                        <Region HBox.hgrow="ALWAYS" />
+                                        <Label fx:id="optionRight4" text="" styleClass="screen-option-right" maxWidth="Infinity" HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT" />
+                                    </HBox>
+                                </VBox>
+
+                                <Region prefHeight="10" />
                                 <TextField fx:id="screenInput" promptText="_" styleClass="screen-input" />
                             </VBox>
                         </children>
@@ -54,10 +89,10 @@
 
                     <!-- Right Side Buttons -->
                     <VBox spacing="15" alignment="CENTER_RIGHT" styleClass="side-buttons-container">
-                        <Button text="" mnemonicParsing="false" styleClass="side-btn, side-btn-right" />
-                        <Button text="" mnemonicParsing="false" styleClass="side-btn, side-btn-right" />
-                        <Button text="" mnemonicParsing="false" styleClass="side-btn, side-btn-right" />
-                        <Button text="" mnemonicParsing="false" styleClass="side-btn, side-btn-right" />
+                        <Button text="" onAction="#onSideBtnRight1" mnemonicParsing="false" styleClass="side-btn, side-btn-right" />
+                        <Button text="" onAction="#onSideBtnRight2" mnemonicParsing="false" styleClass="side-btn, side-btn-right" />
+                        <Button text="" onAction="#onSideBtnRight3" mnemonicParsing="false" styleClass="side-btn, side-btn-right" />
+                        <Button text="" onAction="#onSideBtnRight4" mnemonicParsing="false" styleClass="side-btn, side-btn-right" />
                     </VBox>
                 </children>
             </HBox>
@@ -65,7 +100,7 @@
             <Region prefHeight="30" />
 
             <!-- Card Reader Slot -->
-            <HBox alignment="CENTER_LEFT" styleClass="slot-container" spacing="15">
+            <HBox fx:id="cardReaderSlot" alignment="CENTER_LEFT" styleClass="slot-container" spacing="15">
                 <Label text="💳" styleClass="slot-icon" />
                 <Label text="CARD READER" styleClass="slot-label" />
             </HBox>

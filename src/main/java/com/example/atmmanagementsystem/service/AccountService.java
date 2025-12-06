@@ -6,11 +6,18 @@ import java.security.SecureRandom;
 import java.util.*;
 
 public class AccountService {
+    private static final AccountService INSTANCE = new AccountService();
+
+    public static AccountService getInstance() {
+        return INSTANCE;
+    }
     private final Map<String, Account> byAccountNumber = new HashMap<>();
     private final Map<String, Account> byCardNumber = new HashMap<>();
     private final Map<String, Account> byPhone = new HashMap<>();
 
     private final SecureRandom random = new SecureRandom();
+
+    // make constructor default (public) to preserve existing usage, but preferred access is via getInstance()
 
     public synchronized Account createAccount(String name, String phone, double initialDeposit) {
         Account account = new Account(name, phone, initialDeposit);

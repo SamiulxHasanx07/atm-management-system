@@ -36,7 +36,7 @@
 .screen-inner {
     -fx-background-color: linear-gradient(to bottom right, #102a43, #081525);
     -fx-background-radius: 5;
-    -fx-min-width: 280;
+    -fx-min-width: 300;
     -fx-min-height: 220;
 }
 
@@ -51,6 +51,22 @@
     -fx-text-fill: #a5f3fc;
     -fx-font-family: "Consolas", monospace;
     -fx-font-size: 14px;
+}
+
+.screen-option-left {
+    -fx-text-fill: #ffffff;
+    -fx-font-family: "Consolas", monospace;
+    -fx-font-size: 14px;
+    -fx-padding: 2 0;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.screen-option-right {
+    -fx-text-fill: #ffffff;
+    -fx-font-family: "Consolas", monospace;
+    -fx-font-size: 14px;
+    -fx-padding: 2 0;
+    -fx-alignment: CENTER_RIGHT;
 }
 
 .screen-input {
