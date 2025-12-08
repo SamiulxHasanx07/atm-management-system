@@ -3,10 +3,9 @@ CREATE DATABASE IF NOT EXISTS bangla_bank;
 USE bangla_bank;
 
 CREATE TABLE IF NOT EXISTS accounts (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    account_number VARCHAR(20) UNIQUE NOT NULL,
+    account_number VARCHAR(20) PRIMARY KEY,
     card_number VARCHAR(20) UNIQUE NOT NULL,
-    pin VARCHAR(4) NOT NULL,
+    pin VARCHAR(64) NOT NULL,
     name VARCHAR(100) NOT NULL,
     phone_number VARCHAR(15) UNIQUE NOT NULL,
     email VARCHAR(100),

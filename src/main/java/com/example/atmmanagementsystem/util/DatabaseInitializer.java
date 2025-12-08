@@ -27,10 +27,9 @@ public class DatabaseInitializer {
                     Statement stmt = conn.createStatement()) {
 
                 String sql = "CREATE TABLE IF NOT EXISTS accounts (" +
-                        "id INT AUTO_INCREMENT PRIMARY KEY, " +
-                        "account_number VARCHAR(20) UNIQUE NOT NULL, " +
+                        "account_number VARCHAR(20) PRIMARY KEY, " +
                         "card_number VARCHAR(20) UNIQUE NOT NULL, " +
-                        "pin VARCHAR(4) NOT NULL, " +
+                        "pin VARCHAR(64) NOT NULL, " +
                         "name VARCHAR(100) NOT NULL, " +
                         "phone_number VARCHAR(15) UNIQUE NOT NULL, " +
                         "email VARCHAR(100), " +
@@ -44,6 +43,14 @@ public class DatabaseInitializer {
                         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                         ")";
                 stmt.execute(sql);
+
+                // 3. Ensure Schema Compatibility (force update PIN column if it exists with old
+                // length)
+                try {
+                    stmt.execute("ALTER TABLE accounts MODIFY COLUMN pin VARCHAR(64) NOT NULL");
+                } catch (SQLException e) {
+                    // Ignore
+                }
             }
 
             System.out.println("Database and tables initialized successfully.");

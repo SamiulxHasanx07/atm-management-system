@@ -31,11 +31,13 @@ public class DatabaseAccountService implements AccountService {
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, acctNum);
             pstmt.setString(2, cardNum);
-            pstmt.setString(3, pin);
+
+            String hashedPin = com.example.atmmanagementsystem.util.SecurityUtil.hashPin(pin);
+            pstmt.setString(3, hashedPin);
             pstmt.setString(4, name);
             pstmt.setString(5, phone);
             pstmt.setString(6, email);
@@ -55,6 +57,7 @@ public class DatabaseAccountService implements AccountService {
                     address);
             account.setAccountNumber(acctNum);
             account.setCardNumber(cardNum);
+            // Return plain PIN to the user so they see what it is
             account.setPin(pin);
 
             return account;

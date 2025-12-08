@@ -30,7 +30,7 @@
     -fx-border-width: 2;
     -fx-border-radius: 10;
     -fx-padding: 5;
-    -fx-effect: inner-shadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);
+    -fx-effect: innershadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);
 }
 
 .screen-inner {
@@ -100,7 +100,7 @@
 
 .side-btn:pressed {
     -fx-background-color: #1f2933;
-    -fx-effect: inner-shadow(three-pass-box, rgba(0,0,0,0.5), 5, 0, 0, 2);
+    -fx-effect: innershadow(three-pass-box, rgba(0,0,0,0.5), 5, 0, 0, 2);
 }
 
 .side-btn-left {
@@ -158,7 +158,7 @@
 
 .num-btn:pressed {
     -fx-background-color: #1f2933;
-    -fx-effect: inner-shadow(three-pass-box, rgba(0,0,0,0.4), 3, 0, 0, 2);
+    -fx-effect: innershadow(three-pass-box, rgba(0,0,0,0.4), 3, 0, 0, 2);
 }
 
 .action-btn {

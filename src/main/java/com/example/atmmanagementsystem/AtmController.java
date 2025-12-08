@@ -85,7 +85,8 @@ public class AtmController {
             return;
         }
 
-        if (acc.getPin().equals(pin)) {
+        String hashedInputPin = com.example.atmmanagementsystem.util.SecurityUtil.hashPin(pin);
+        if (acc.getPin().equals(hashedInputPin)) {
             screenMessage.setText("Login successful. Welcome " + acc.getName());
         } else {
             screenMessage.setText("Incorrect PIN");

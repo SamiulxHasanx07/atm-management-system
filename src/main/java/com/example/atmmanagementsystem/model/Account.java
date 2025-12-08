@@ -121,8 +121,8 @@ public class Account {
     }
 
     public void setPin(String pin) {
-        if (pin == null || !pin.matches("\\d{4}")) {
-            throw new IllegalArgumentException("PIN must be exactly 4 digits");
+        if (pin == null || !(pin.matches("\\d{4}") || pin.matches("[a-fA-F0-9]{64}"))) {
+            throw new IllegalArgumentException("PIN must be exactly 4 digits or a valid hash");
         }
         this.pin = pin;
     }
