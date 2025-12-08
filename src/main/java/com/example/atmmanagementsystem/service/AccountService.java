@@ -18,6 +18,10 @@ public interface AccountService {
 
     Optional<Account> findByPhone(String phone);
 
+    Optional<Account> findByEmail(String email);
+
+    Optional<Account> findByNid(String nid);
+
     List<Account> listAccounts();
 
     // Factory method - switching to Database implementation

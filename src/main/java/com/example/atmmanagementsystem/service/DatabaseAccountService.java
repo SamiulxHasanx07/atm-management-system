@@ -21,6 +21,12 @@ public class DatabaseAccountService implements AccountService {
         if (findByPhone(phone).isPresent()) {
             throw new IllegalArgumentException("An account with this phone number already exists");
         }
+        if (email != null && !email.isEmpty() && findByEmail(email).isPresent()) {
+            throw new IllegalArgumentException("An account with this email already exists");
+        }
+        if (nid != null && !nid.isEmpty() && findByNid(nid).isPresent()) {
+            throw new IllegalArgumentException("An account with this NID already exists");
+        }
 
         String acctNum = generateUniqueAccountNumber();
         String cardNum = generateUniqueCardNumber();
@@ -87,6 +93,22 @@ public class DatabaseAccountService implements AccountService {
         String digits = phone.replaceAll("\\D", "");
         String sql = "SELECT * FROM accounts WHERE phone_number = ?";
         return getAccountResult(sql, digits);
+    }
+
+    @Override
+    public Optional<Account> findByEmail(String email) {
+        if (email == null)
+            return Optional.empty();
+        String sql = "SELECT * FROM accounts WHERE email = ?";
+        return getAccountResult(sql, email);
+    }
+
+    @Override
+    public Optional<Account> findByNid(String nid) {
+        if (nid == null)
+            return Optional.empty();
+        String sql = "SELECT * FROM accounts WHERE nid = ?";
+        return getAccountResult(sql, nid);
     }
 
     @Override
