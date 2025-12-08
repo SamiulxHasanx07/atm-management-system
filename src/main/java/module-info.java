@@ -9,8 +9,8 @@ module com.example.atmmanagementsystem {
     requires org.kordamp.ikonli.javafx;
     requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
-    requires com.almasb.fxgl.all;
     requires javafx.graphics;
+    requires java.sql;
 
     opens com.example.atmmanagementsystem to javafx.fxml;
 

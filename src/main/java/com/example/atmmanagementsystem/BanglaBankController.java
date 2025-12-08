@@ -55,7 +55,7 @@ public class BanglaBankController {
     @FXML
     private VBox resultContainer;
 
-    private final AccountService service = new AccountService();
+    private final AccountService service = AccountService.getInstance();
 
     @FXML
     public void initialize() {
