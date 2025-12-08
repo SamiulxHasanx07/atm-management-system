@@ -40,7 +40,7 @@
                             <Label text="Create New Account" styleClass="screen-welcome"/>
                             <GridPane hgap="10" vgap="10" alignment="CENTER">
                                 <columnConstraints>
-                                    <ColumnConstraints minWidth="120" halignment="RIGHT" />
+                                    <ColumnConstraints minWidth="130" halignment="RIGHT" />
                                     <ColumnConstraints hgrow="ALWAYS" />
                                 </columnConstraints>
                                 <Label text="Full name:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="screen-text"/>
@@ -49,10 +49,31 @@
                                 <TextField fx:id="phoneField" promptText="01788058690" text="01788058690" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="screen-input"/>
                                 <Label text="Initial deposit:" GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="screen-text"/>
                                 <TextField fx:id="depositField" promptText="150.00" text="500" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="screen-input"/>
-                                <Label fx:id="errorLabel" style="-fx-text-fill: red;" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-                                <Button text="Create Account" onAction="#onCreateAccount" GridPane.rowIndex="4" GridPane.columnIndex="1" styleClass="num-btn"/>
-                                <Button text="Back to Main Menu" onAction="#onBackToWelcome" GridPane.rowIndex="5" GridPane.columnIndex="1" styleClass="num-btn"/>
+                                
+                                <Label text="Email:" GridPane.rowIndex="3" GridPane.columnIndex="0" styleClass="screen-text"/>
+                                <TextField fx:id="emailField" promptText="example@email.com" text="user@example.com" GridPane.rowIndex="3" GridPane.columnIndex="1" styleClass="screen-input"/>
+
+                                <Label text="Gender:" GridPane.rowIndex="4" GridPane.columnIndex="0" styleClass="screen-text"/>
+                                <TextField fx:id="genderField" promptText="Male/Female" text="Male" GridPane.rowIndex="4" GridPane.columnIndex="1" styleClass="screen-input"/>
+
+                                <Label text="Profession:" GridPane.rowIndex="5" GridPane.columnIndex="0" styleClass="screen-text"/>
+                                <TextField fx:id="professionField" promptText="Profession" text="Student" GridPane.rowIndex="5" GridPane.columnIndex="1" styleClass="screen-input"/>
+
+                                <Label text="Nationality:" GridPane.rowIndex="6" GridPane.columnIndex="0" styleClass="screen-text"/>
+                                <TextField fx:id="nationalityField" promptText="Bangladeshi" text="Bangladeshi" GridPane.rowIndex="6" GridPane.columnIndex="1" styleClass="screen-input"/>
+
+                                <Label text="NID Number:" GridPane.rowIndex="7" GridPane.columnIndex="0" styleClass="screen-text"/>
+                                <TextField fx:id="nidField" promptText="NID Number" text="1234567890" GridPane.rowIndex="7" GridPane.columnIndex="1" styleClass="screen-input"/>
+
+                                <Label text="Address:" GridPane.rowIndex="8" GridPane.columnIndex="0" styleClass="screen-text"/>
+                                <TextArea fx:id="addressField" promptText="Address" text="Dhaka, Bangladesh" prefRowCount="2" GridPane.rowIndex="8" GridPane.columnIndex="1" styleClass="address-input"/>
+
+                                <Label fx:id="errorLabel" style="-fx-text-fill: red;" GridPane.rowIndex="9" GridPane.columnIndex="1"/>
                             </GridPane>
+                            <javafx.scene.layout.HBox spacing="10" alignment="CENTER">
+                                <Button text="Create Account" onAction="#onCreateAccount" styleClass="num-btn"/>
+                                <Button text="Back to Main Menu" onAction="#onBackToWelcome" styleClass="num-btn"/>
+                            </javafx.scene.layout.HBox>
                             <VBox fx:id="resultContainer" visible="false" managed="false" spacing="15" alignment="CENTER">
                                 <Label fx:id="resultTitle" text="Result" styleClass="screen-text" />
                                 <TextArea fx:id="outputArea" editable="false" wrapText="true" prefRowCount="5" styleClass="screen-input" style="-fx-control-inner-background: #0d1116; -fx-text-fill: white;" />

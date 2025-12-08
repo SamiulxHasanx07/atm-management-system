@@ -19,11 +19,25 @@ public class Account {
     private double balance;
     private boolean blocked = false;
 
+    private String email;
+    private String gender;
+    private String profession;
+    private String nationality;
+    private String nid;
+    private String address;
+
     // constructor: use AccountService to create accounts
-    public Account(String name, String phoneNumber, double initialDeposit) {
+    public Account(String name, String phoneNumber, double initialDeposit,
+            String email, String gender, String profession, String nationality, String nid, String address) {
         setName(name);
         setPhoneNumber(phoneNumber);
         setBalance(initialDeposit);
+        setEmail(email);
+        setGender(gender);
+        setProfession(profession);
+        setNationality(nationality);
+        setNid(nid);
+        setAddress(address);
     }
 
     // Getters
@@ -53,6 +67,30 @@ public class Account {
 
     public boolean isBlocked() {
         return blocked;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public String getProfession() {
+        return profession;
+    }
+
+    public String getNationality() {
+        return nationality;
+    }
+
+    public String getNid() {
+        return nid;
+    }
+
+    public String getAddress() {
+        return address;
     }
 
     // Setters with validation where appropriate
@@ -100,11 +138,60 @@ public class Account {
         this.blocked = blocked;
     }
 
+    public void setEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            throw new IllegalArgumentException("Invalid email address");
+        }
+        this.email = email.trim();
+    }
+
+    public void setGender(String gender) {
+        if (gender == null || gender.trim().isEmpty()) {
+            throw new IllegalArgumentException("Gender is required");
+        }
+        this.gender = gender.trim();
+    }
+
+    public void setProfession(String profession) {
+        if (profession == null || profession.trim().isEmpty()) {
+            throw new IllegalArgumentException("Profession is required");
+        }
+        this.profession = profession.trim();
+    }
+
+    public void setNationality(String nationality) {
+        if (nationality == null || nationality.trim().isEmpty()) {
+            this.nationality = "Bangladeshi";
+        } else {
+            this.nationality = nationality.trim();
+        }
+    }
+
+    public void setNid(String nid) {
+        if (nid == null || !nid.matches("\\d+")) {
+            throw new IllegalArgumentException("NID must be numeric");
+        }
+        this.nid = nid;
+    }
+
+    public void setAddress(String address) {
+        if (address == null || address.trim().isEmpty()) {
+            throw new IllegalArgumentException("Address is required");
+        }
+        this.address = address.trim();
+    }
+
     @Override
     public String toString() {
         return "Account{" +
                 "name='" + name + '\'' +
                 ", phoneNumber='" + phoneNumber + '\'' +
+                ", email='" + email + '\'' +
+                ", gender='" + gender + '\'' +
+                ", profession='" + profession + '\'' +
+                ", nationality='" + nationality + '\'' +
+                ", nid='" + nid + '\'' +
+                ", address='" + address + '\'' +
                 ", accountNumber='" + accountNumber + '\'' +
                 ", cardNumber='" + cardNumber + '\'' +
                 ", pin='" + pin + '\'' +

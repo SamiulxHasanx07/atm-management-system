@@ -76,6 +76,13 @@
     -fx-font-size: 16px;
     -fx-prompt-text-fill: #f5fffd63;
 }
+.address-input {
+    -fx-background-color: transparent;
+    -fx-text-fill: #000000;
+    -fx-font-family: "Consolas", monospace;
+    -fx-font-size: 16px;
+    -fx-prompt-text-fill: #f5fffd99;
+}
 
 /* Side Buttons (Arrows) */
 .side-buttons-container {

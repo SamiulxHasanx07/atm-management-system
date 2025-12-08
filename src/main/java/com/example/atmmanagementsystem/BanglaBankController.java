@@ -23,6 +23,24 @@ public class BanglaBankController {
     private TextField depositField;
 
     @FXML
+    private TextField emailField;
+
+    @FXML
+    private TextField genderField;
+
+    @FXML
+    private TextField professionField;
+
+    @FXML
+    private TextField nationalityField;
+
+    @FXML
+    private TextField nidField;
+
+    @FXML
+    private TextArea addressField;
+
+    @FXML
     private Label errorLabel;
 
     @FXML
@@ -69,6 +87,12 @@ public class BanglaBankController {
         String name = nameField.getText();
         String phone = phoneField.getText();
         String depositText = depositField.getText();
+        String email = emailField.getText();
+        String gender = genderField.getText();
+        String profession = professionField.getText();
+        String nationality = nationalityField.getText();
+        String nid = nidField.getText();
+        String address = addressField.getText();
 
         if (name == null || name.trim().length() < 2) {
             errorLabel.setText("Name must be at least 2 characters");
@@ -76,6 +100,28 @@ public class BanglaBankController {
         }
         if (phone == null || phone.replaceAll("\\D", "").length() < 10) {
             errorLabel.setText("Phone must contain at least 10 digits");
+            return;
+        }
+        if (email == null || !email.contains("@")) {
+            errorLabel.setText("Invalid email address");
+            return;
+        }
+        if (gender == null || gender.trim().isEmpty()) {
+            errorLabel.setText("Gender is required");
+            return;
+        }
+        if (profession == null || profession.trim().isEmpty()) {
+            errorLabel.setText("Profession is required");
+            return;
+        }
+        // nationality defaults to Bangladeshi in Account if empty/null, but let's check
+        // input
+        if (nid == null || !nid.matches("\\d+")) {
+            errorLabel.setText("NID must be numeric");
+            return;
+        }
+        if (address == null || address.trim().isEmpty()) {
+            errorLabel.setText("Address is required");
             return;
         }
 
@@ -94,18 +140,31 @@ public class BanglaBankController {
         }
 
         try {
-            Account acc = service.createAccount(name, phone, deposit);
+            Account acc = service.createAccount(name, phone, deposit, email, gender, profession, nationality, nid,
+                    address);
+
             resultTitle.setText("Successfully Created Account");
             resultContainer.setVisible(true);
             resultContainer.setManaged(true);
+
             StringBuilder out = new StringBuilder();
-            out.append("Name: ").append(acc.getName()).append("\n");
-            out.append("Account#: ").append(acc.getAccountNumber()).append("\n");
-            out.append("Card#:    ").append(acc.getCardNumber()).append("\n");
-            out.append("PIN:      ").append(acc.getPin()).append("\n");
-            out.append("Balance:  ").append(String.format("%.2f", acc.getBalance())).append("\n\n");
+            out.append("Name:        ").append(acc.getName()).append("\n");
+            out.append("Email:       ").append(acc.getEmail()).append("\n");
+            out.append("Phone:       ").append(acc.getPhoneNumber()).append("\n");
+            out.append("Gender:      ").append(acc.getGender()).append("\n");
+            out.append("Profession:  ").append(acc.getProfession()).append("\n");
+            out.append("Nationality: ").append(acc.getNationality()).append("\n");
+            out.append("NID:         ").append(acc.getNid()).append("\n");
+            out.append("Address:     ").append(acc.getAddress()).append("\n");
+            out.append("---------------------------------\n");
+            out.append("Account#:    ").append(acc.getAccountNumber()).append("\n");
+            out.append("Card#:       ").append(acc.getCardNumber()).append("\n");
+            out.append("PIN:         ").append(acc.getPin()).append("\n");
+            out.append("Balance:     ").append(String.format("%.2f", acc.getBalance())).append("\n\n");
+
             outputArea.setText(out.toString());
             createResultLabel.setText("New card: " + acc.getCardNumber() + "   PIN: " + acc.getPin());
+
             // after creation, prefill card input so user can login immediately
 
         } catch (IllegalArgumentException e) {

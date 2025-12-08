@@ -11,16 +11,20 @@ public class AccountService {
     public static AccountService getInstance() {
         return INSTANCE;
     }
+
     private final Map<String, Account> byAccountNumber = new HashMap<>();
     private final Map<String, Account> byCardNumber = new HashMap<>();
     private final Map<String, Account> byPhone = new HashMap<>();
 
     private final SecureRandom random = new SecureRandom();
 
-    // make constructor default (public) to preserve existing usage, but preferred access is via getInstance()
+    // make constructor default (public) to preserve existing usage, but preferred
+    // access is via getInstance()
 
-    public synchronized Account createAccount(String name, String phone, double initialDeposit) {
-        Account account = new Account(name, phone, initialDeposit);
+    public synchronized Account createAccount(String name, String phone, double initialDeposit,
+            String email, String gender, String profession, String nationality, String nid, String address) {
+        Account account = new Account(name, phone, initialDeposit, email, gender, profession, nationality, nid,
+                address);
 
         if (byPhone.containsKey(account.getPhoneNumber())) {
             throw new IllegalArgumentException("An account with this phone number already exists");
@@ -52,7 +56,8 @@ public class AccountService {
     }
 
     public Optional<Account> findByPhone(String phone) {
-        if (phone == null) return Optional.empty();
+        if (phone == null)
+            return Optional.empty();
         String digits = phone.replaceAll("\\D", "");
         return Optional.ofNullable(byPhone.get(digits));
     }
@@ -65,7 +70,8 @@ public class AccountService {
     private String generateUniqueAccountNumber() {
         for (int i = 0; i < 10_000; i++) {
             String candidate = String.format("%012d", Math.abs(random.nextLong()) % 1_000_000_000_000L);
-            if (!byAccountNumber.containsKey(candidate)) return candidate;
+            if (!byAccountNumber.containsKey(candidate))
+                return candidate;
         }
         throw new IllegalStateException("Unable to generate unique account number");
     }
@@ -74,9 +80,11 @@ public class AccountService {
         for (int i = 0; i < 10_000; i++) {
             // generate 16-digit number
             StringBuilder sb = new StringBuilder(16);
-            for (int j = 0; j < 16; j++) sb.append(random.nextInt(10));
+            for (int j = 0; j < 16; j++)
+                sb.append(random.nextInt(10));
             String candidate = sb.toString();
-            if (!byCardNumber.containsKey(candidate)) return candidate;
+            if (!byCardNumber.containsKey(candidate))
+                return candidate;
         }
         throw new IllegalStateException("Unable to generate unique card number");
     }
