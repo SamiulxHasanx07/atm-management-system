@@ -28,7 +28,7 @@
             <Region prefHeight="20" />
 
             <!-- Screen Section -->
-            <HBox spacing="15" alignment="CENTER">
+            <HBox spacing="15" alignment="TOP_CENTER">
                 <children>
                     <!-- Left Side Buttons -->
                     <VBox spacing="15" alignment="CENTER_LEFT" styleClass="side-buttons-container">
