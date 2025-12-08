@@ -35,67 +35,30 @@
                             <Insets top="20" right="20" bottom="20" left="20" />
                         </padding>
 
-                        <!-- Welcome pane -->
-                        <VBox fx:id="welcomePane" spacing="15" alignment="CENTER">
-                            <Label text="Welcome! Insert your card or apply for a new card." wrapText="true" styleClass="screen-text" textAlignment="CENTER"/>
-                            <GridPane hgap="10" vgap="10" alignment="CENTER">
-                                <columnConstraints>
-                                    <ColumnConstraints minWidth="100" halignment="RIGHT" />
-                                    <ColumnConstraints hgrow="ALWAYS" />
-                                </columnConstraints>
-                                <Label text="Card number:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="screen-text" />
-                                <TextField fx:id="cardInput" promptText="Enter 16-digit card number" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="screen-input" />
-                                <Label fx:id="welcomeError" style="-fx-text-fill:red;" GridPane.rowIndex="1" GridPane.columnIndex="1" />
-                                <Button text="Insert Card" onAction="#onInsertCard" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="num-btn" />
-                                <Button text="New user? Apply card" onAction="#onApplyCard" GridPane.rowIndex="3" GridPane.columnIndex="1" styleClass="num-btn" />
-                            </GridPane>
-                        </VBox>
-
-                        <!-- Login pane -->
-                        <VBox fx:id="loginPane" spacing="15" visible="false" managed="false" alignment="CENTER">
-                            <Label text="Enter PIN to login" styleClass="screen-welcome" />
-                            <GridPane hgap="10" vgap="10" alignment="CENTER">
-                                <columnConstraints>
-                                    <ColumnConstraints minWidth="100" halignment="RIGHT" />
-                                    <ColumnConstraints hgrow="ALWAYS" />
-                                </columnConstraints>
-                                <Label text="Card:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="screen-text" />
-                                <Label fx:id="cardLabel" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="screen-text" />
-                                <Label text="PIN:" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="screen-text" />
-                                <PasswordField fx:id="pinField" promptText="4-digit PIN" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="screen-input" />
-                                <Label fx:id="loginError" style="-fx-text-fill:red;" GridPane.rowIndex="2" GridPane.columnIndex="1" />
-                                <Button text="Login" onAction="#onLogin" GridPane.rowIndex="3" GridPane.columnIndex="1" styleClass="num-btn" />
-                                <Button text="Cancel" onAction="#onCancelLogin" GridPane.rowIndex="4" GridPane.columnIndex="1" styleClass="num-btn" />
-                            </GridPane>
-                        </VBox>
-
                         <!-- Create account pane -->
-                        <VBox fx:id="createPane" spacing="15" visible="false" managed="false" alignment="CENTER">
+                        <VBox fx:id="createPane" spacing="15" alignment="CENTER">
                             <Label text="Create New Account" styleClass="screen-welcome"/>
                             <GridPane hgap="10" vgap="10" alignment="CENTER">
                                 <columnConstraints>
                                     <ColumnConstraints minWidth="120" halignment="RIGHT" />
                                     <ColumnConstraints hgrow="ALWAYS" />
                                 </columnConstraints>
-
                                 <Label text="Full name:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="screen-text"/>
-                                <TextField fx:id="nameField" promptText="Samiul Hasan" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="screen-input"/>
-
+                                <TextField fx:id="nameField" promptText="Samiul Hasan" text="Samiul Hasan" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="screen-input"/>
                                 <Label text="Phone number:" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="screen-text"/>
-                                <TextField fx:id="phoneField" promptText="01788058690" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="screen-input"/>
-
+                                <TextField fx:id="phoneField" promptText="01788058690" text="01788058690" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="screen-input"/>
                                 <Label text="Initial deposit:" GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="screen-text"/>
-                                <TextField fx:id="depositField" promptText="150.00" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="screen-input"/>
-
+                                <TextField fx:id="depositField" promptText="150.00" text="500" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="screen-input"/>
                                 <Label fx:id="errorLabel" style="-fx-text-fill: red;" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-
                                 <Button text="Create Account" onAction="#onCreateAccount" GridPane.rowIndex="4" GridPane.columnIndex="1" styleClass="num-btn"/>
                                 <Button text="Back to Main Menu" onAction="#onBackToWelcome" GridPane.rowIndex="5" GridPane.columnIndex="1" styleClass="num-btn"/>
                             </GridPane>
-
-                            <Label text="Result / Stored Accounts:" styleClass="screen-text" />
-                            <TextArea fx:id="outputArea" editable="false" wrapText="true" prefRowCount="5" styleClass="screen-input" style="-fx-control-inner-background: #0d1116; -fx-text-fill: white;" />
-                            <Label fx:id="createResultLabel" style="-fx-font-weight:bold; -fx-text-fill: #00e676;" />
+                            <VBox fx:id="resultContainer" visible="false" managed="false" spacing="15" alignment="CENTER">
+                                <Label fx:id="resultTitle" text="Result" styleClass="screen-text" />
+                                <TextArea fx:id="outputArea" editable="false" wrapText="true" prefRowCount="5" styleClass="screen-input" style="-fx-control-inner-background: #0d1116; -fx-text-fill: white;" />
+                                <Button text="Copy to Clipboard" onAction="#onCopyInfo" styleClass="num-btn" />
+                                <Label fx:id="createResultLabel" style="-fx-font-weight:bold; -fx-text-fill: #00e676;" />
+                            </VBox>
                         </VBox>
                     </VBox>
                 </children>

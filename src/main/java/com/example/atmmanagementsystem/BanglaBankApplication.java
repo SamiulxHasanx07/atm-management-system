@@ -21,6 +21,7 @@ public class BanglaBankApplication extends Application {
         // maximize and start in fullscreen
         stage.setMaximized(true);
         stage.setFullScreen(true);
+        stage.setFullScreenExitHint("");
 
         stage.show();
     }
