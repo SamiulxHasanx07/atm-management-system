@@ -141,7 +141,7 @@ public class AtmController {
                 case "L1": // Create Account
                     try {
                         javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
-                                getClass().getResource("bangla-bank-view.fxml"));
+                                getClass().getResource("create-account.fxml"));
                         javafx.scene.Parent root = loader.load();
                         BanglaBankController controller = loader.getController();
                         controller.showCreateAccount();
