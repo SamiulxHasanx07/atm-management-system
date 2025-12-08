@@ -70,7 +70,7 @@
                                     <HBox alignment="CENTER_LEFT" spacing="10" minHeight="30" prefHeight="30">
                                         <Label fx:id="optionLeft3" text="" styleClass="screen-option-left" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
                                         <Region HBox.hgrow="ALWAYS" />
-                                        <Label fx:id="optionRight3" text="" styleClass="screen-option-right" maxWidth="Infinity" HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT" />
+                                        <Label fx:id="optionRight3" text="Exit/Eject" styleClass="screen-option-right" maxWidth="Infinity" HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT" />
                                     </HBox>
 
                                     <!-- Row 4 -->

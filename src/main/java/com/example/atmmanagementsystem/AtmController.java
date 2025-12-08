@@ -161,6 +161,9 @@ public class AtmController {
                 case "R2": // Deposit Cash
                     screenMessage.setText("Feature 'Deposit Cash' not implemented yet.");
                     break;
+                case "R3": // Exit Application
+                    javafx.application.Platform.exit();
+                    break;
                 default:
                     break;
             }
@@ -231,6 +234,7 @@ public class AtmController {
             optionRight1.setText("Forgot PIN");
             optionLeft2.setText("Insert Card");
             optionRight2.setText("Deposit Cash");
+            optionRight3.setText("Exit Bangla Bank");
         }
     }
 
