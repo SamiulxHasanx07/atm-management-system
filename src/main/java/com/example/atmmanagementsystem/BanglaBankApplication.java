@@ -13,7 +13,7 @@ public class BanglaBankApplication extends Application {
         // Initialize Database
         com.example.atmmanagementsystem.util.DatabaseInitializer.initialize();
 
-        FXMLLoader fxmlLoader = new FXMLLoader(BanglaBankApplication.class.getResource("welcome-screen.fxml"));
+        FXMLLoader fxmlLoader = new FXMLLoader(BanglaBankApplication.class.getResource("app.fxml"));
         Scene scene = new Scene(fxmlLoader.load());
         stage.setTitle("Bangla Bank - Management System");
         stage.setScene(scene);

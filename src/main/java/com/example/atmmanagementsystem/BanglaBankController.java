@@ -178,7 +178,7 @@ public class BanglaBankController {
     @FXML
     protected void onBackToWelcome() {
         try {
-            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("welcome-screen.fxml"));
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("app.fxml"));
             javafx.scene.Parent root = loader.load();
             nameField.getScene().setRoot(root);
         } catch (Exception e) {
