@@ -71,13 +71,13 @@
                                 <Label fx:id="errorLabel" style="-fx-text-fill: red;" GridPane.rowIndex="9" GridPane.columnIndex="1"/>
                             </GridPane>
                             <javafx.scene.layout.HBox spacing="10" alignment="CENTER">
-                                <Button text="Create Account" onAction="#onCreateAccount" styleClass="num-btn"/>
                                 <Button text="Back to Main Menu" onAction="#onBackToWelcome" styleClass="num-btn"/>
+                                <Button text="Create Account" onAction="#onCreateAccount" styleClass="num-btn"/>
                             </javafx.scene.layout.HBox>
                             <VBox fx:id="resultContainer" visible="false" managed="false" spacing="15" alignment="CENTER">
                                 <Label fx:id="resultTitle" text="Result" styleClass="screen-text" />
                                 <TextArea fx:id="outputArea" editable="false" wrapText="true" prefRowCount="5" styleClass="screen-input" style="-fx-control-inner-background: #0d1116; -fx-text-fill: white;" />
-                                <Button text="Copy to Clipboard" onAction="#onCopyInfo" styleClass="num-btn" />
+                                <Button text="Copy Account Information" onAction="#onCopyInfo" styleClass="num-btn" />
                                 <Label fx:id="createResultLabel" style="-fx-font-weight:bold; -fx-text-fill: #00e676;" />
                             </VBox>
                         </VBox>
