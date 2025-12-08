@@ -139,7 +139,18 @@ public class AtmController {
         if (!cardInserted) {
             switch (optionCode) {
                 case "L1": // Create Account
-                    screenMessage.setText("Feature 'Create Account' not implemented yet.");
+                    try {
+                        javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                                getClass().getResource("bangla-bank-view.fxml"));
+                        javafx.scene.Parent root = loader.load();
+                        BanglaBankController controller = loader.getController();
+                        controller.showCreateAccount();
+
+                        screenMessage.getScene().setRoot(root);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        screenMessage.setText("Error loading Create Account screen.");
+                    }
                     break;
                 case "R1": // Forgot PIN
                     screenMessage.setText("Feature 'Forgot PIN' not implemented yet.");

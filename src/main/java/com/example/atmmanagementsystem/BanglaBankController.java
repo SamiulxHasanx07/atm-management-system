@@ -60,6 +60,10 @@ public class BanglaBankController {
         showPane(welcomePane);
     }
 
+    public void showCreateAccount() {
+        showPane(createPane);
+    }
+
     private void showPane(VBox pane) {
         welcomePane.setVisible(false);
         welcomePane.setManaged(false);
@@ -154,7 +158,15 @@ public class BanglaBankController {
         nameField.clear();
         phoneField.clear();
         depositField.clear();
-        showPane(welcomePane);
+
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("welcome-screen.fxml"));
+            javafx.scene.Parent root = loader.load();
+            nameField.getScene().setRoot(root);
+        } catch (Exception e) {
+            e.printStackTrace();
+            errorLabel.setText("Error returning to Main Menu");
+        }
     }
 
     @FXML
@@ -220,9 +232,11 @@ public class BanglaBankController {
     }
 
     private String maskCard(String card) {
-        if (card == null) return "";
+        if (card == null)
+            return "";
         String digits = card.replaceAll("\\s+", "");
-        if (digits.length() <= 4) return digits;
+        if (digits.length() <= 4)
+            return digits;
         return "**** **** **** " + digits.substring(digits.length() - 4);
     }
 }
