@@ -26,6 +26,10 @@ public interface AccountService {
 
     void blockAccount(String cardNumber);
 
+    void deposit(String cardNumber, double amount);
+
+    void withdraw(String cardNumber, double amount);
+
     // Factory method - switching to Database implementation
     static AccountService getInstance() {
         return new DatabaseAccountService();

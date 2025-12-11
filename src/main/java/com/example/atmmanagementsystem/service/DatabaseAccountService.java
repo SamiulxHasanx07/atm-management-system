@@ -205,4 +205,60 @@ public class DatabaseAccountService implements AccountService {
             throw new RuntimeException("Error blocking account: " + e.getMessage());
         }
     }
+
+    @Override
+    public void deposit(String cardNumber, double amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+        if (amount % 500 != 0) {
+            throw new IllegalArgumentException("Amount must be a multiple of 500");
+        }
+
+        String sql = "UPDATE accounts SET balance = balance + ? WHERE card_number = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setDouble(1, amount);
+            pstmt.setString(2, cardNumber);
+            int rows = pstmt.executeUpdate();
+            if (rows == 0)
+                throw new SQLException("Deposit failed: Card not found");
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Database error during deposit: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void withdraw(String cardNumber, double amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+        if (amount % 500 != 0) {
+            throw new IllegalArgumentException("Amount must be a multiple of 500");
+        }
+
+        // Check balance first
+        Account acc = findByCardNumber(cardNumber).orElseThrow(() -> new IllegalArgumentException("Card not found"));
+        if (acc.getBalance() - amount < 500) {
+            throw new IllegalArgumentException("Insufficient funds. Minimum balance of 500 TK required.");
+        }
+
+        String sql = "UPDATE accounts SET balance = balance - ? WHERE card_number = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setDouble(1, amount);
+            pstmt.setString(2, cardNumber);
+            int rows = pstmt.executeUpdate();
+            if (rows == 0)
+                throw new SQLException("Withdraw failed: Card not found");
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Database error during withdraw: " + e.getMessage());
+        }
+    }
 }
