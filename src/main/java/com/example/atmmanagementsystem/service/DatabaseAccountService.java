@@ -190,4 +190,19 @@ public class DatabaseAccountService implements AccountService {
         int p = random.nextInt(10_000);
         return String.format("%04d", p);
     }
+
+    @Override
+    public void blockAccount(String cardNumber) {
+        String sql = "UPDATE accounts SET blocked = TRUE WHERE card_number = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, cardNumber);
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error blocking account: " + e.getMessage());
+        }
+    }
 }

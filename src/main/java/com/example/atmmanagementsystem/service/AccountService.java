@@ -24,6 +24,8 @@ public interface AccountService {
 
     List<Account> listAccounts();
 
+    void blockAccount(String cardNumber);
+
     // Factory method - switching to Database implementation
     static AccountService getInstance() {
         return new DatabaseAccountService();

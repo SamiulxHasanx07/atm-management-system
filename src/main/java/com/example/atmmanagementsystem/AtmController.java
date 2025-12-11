@@ -13,6 +13,11 @@ import javafx.scene.layout.HBox;
 import javafx.util.Duration;
 
 public class AtmController {
+
+    private enum AtmMode {
+        WELCOME, CARD_INPUT, PIN_INPUT, LOGGED_IN
+    }
+
     @FXML
     private TextField screenInput;
 
@@ -42,8 +47,9 @@ public class AtmController {
     @FXML
     private Label optionRight4;
 
-    private boolean cardInserted = false;
+    private AtmMode currentMode = AtmMode.WELCOME;
     private String currentCardNumber;
+    private int failedAttempts = 0;
 
     private final AccountService service = AccountService.getInstance();
 
@@ -54,6 +60,10 @@ public class AtmController {
 
     @FXML
     private void onNum(javafx.event.ActionEvent ev) {
+        // Only allow input in CARD or PIN modes
+        if (currentMode == AtmMode.WELCOME || currentMode == AtmMode.LOGGED_IN)
+            return;
+
         String val = ((javafx.scene.control.Button) ev.getSource()).getText();
         if (screenInput != null)
             screenInput.appendText(val);
@@ -67,31 +77,83 @@ public class AtmController {
 
     @FXML
     private void onOk() {
-        if (!cardInserted) {
-            screenMessage.setText("Please insert card first.");
+        String input = screenInput.getText();
+
+        if (currentMode == AtmMode.CARD_INPUT) {
+            handleCardInput(input);
+        } else if (currentMode == AtmMode.PIN_INPUT) {
+            handlePinInput(input);
+        } else if (currentMode == AtmMode.WELCOME) {
+            screenMessage.setText("Please select an option.");
+        }
+        screenInput.clear();
+    }
+
+    private void handleCardInput(String inputCard) {
+        if (inputCard == null || inputCard.length() < 10) { // Basic length check
+            screenMessage.setText("Invalid Card Number. Try again.");
             return;
         }
 
-        // card is inserted: treat input as PIN attempt
-        String pin = screenInput.getText();
-        if (pin == null || !pin.matches("\\d{4}")) {
-            screenMessage.setText("Enter 4-digit PIN and press OK");
+        Account acc = service.findByCardNumber(inputCard).orElse(null);
+        if (acc == null) {
+            screenMessage.setText("Card not found. Please try again.");
+            return;
+        }
+
+        if (acc.isBlocked()) {
+            screenMessage.setText("This card is BLOCKED. Please contact bank.");
+            // Reset to welcome after delay or immediate?
+            // For now, let them see the message, they can press Exit or Eject (if we had
+            // one in this state)
+            // But strict requirement: "redirect main menu" on eject.
+            // Let's just create a temporary state or stay in CARD_INPUT but show error?
+            // Safest: Go back to Welcome? Or just reset input.
+            currentMode = AtmMode.WELCOME;
+            updateOptions();
+            return;
+        }
+
+        // Valid card
+        currentCardNumber = inputCard;
+        currentMode = AtmMode.PIN_INPUT;
+        failedAttempts = 0; // Reset attempts for new user
+        screenMessage.setText("Card Accepted. Enter PIN:");
+        updateOptions();
+    }
+
+    private void handlePinInput(String inputPin) {
+        if (inputPin == null || !inputPin.matches("\\d{4}")) {
+            screenMessage.setText("Invalid PIN format. Enter 4 digits.");
             return;
         }
 
         Account acc = service.findByCardNumber(currentCardNumber).orElse(null);
+        // Should exist as we checked in CARD_INPUT, unless deleted concurrently
         if (acc == null) {
-            screenMessage.setText("Card not recognized");
+            resetSession();
+            screenMessage.setText("System Error: Card not found.");
             return;
         }
 
-        String hashedInputPin = com.example.atmmanagementsystem.util.SecurityUtil.hashPin(pin);
+        String hashedInputPin = com.example.atmmanagementsystem.util.SecurityUtil.hashPin(inputPin);
         if (acc.getPin().equals(hashedInputPin)) {
-            screenMessage.setText("Login successful. Welcome " + acc.getName());
+            // Success
+            currentMode = AtmMode.LOGGED_IN;
+            failedAttempts = 0;
+            screenMessage.setText("Welcome Back, " + acc.getName());
+            updateOptions();
         } else {
-            screenMessage.setText("Incorrect PIN");
+            // Fail
+            failedAttempts++;
+            if (failedAttempts >= 3) {
+                service.blockAccount(currentCardNumber);
+                screenMessage.setText("Wrong PIN 3 times. CARD BLOCKED.");
+                resetSession();
+            } else {
+                screenMessage.setText("Incorrect PIN. Attempt " + failedAttempts + "/3");
+            }
         }
-        screenInput.clear();
     }
 
     // Left Side Buttons
@@ -137,85 +199,95 @@ public class AtmController {
     }
 
     private void handleOption(String optionCode) {
-        if (!cardInserted) {
-            switch (optionCode) {
-                case "L1": // Create Account
-                    try {
-                        javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
-                                getClass().getResource("create-account.fxml"));
-                        javafx.scene.Parent root = loader.load();
-                        BanglaBankController controller = loader.getController();
-                        controller.showCreateAccount();
-
-                        screenMessage.getScene().setRoot(root);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        screenMessage.setText("Error loading Create Account screen.");
-                    }
-                    break;
-                case "R1": // Forgot PIN
-                    screenMessage.setText("Feature 'Forgot PIN' not implemented yet.");
-                    break;
-                case "L2": // Insert Card
-                    simulateCardInsertion();
-                    break;
-                case "R2": // Deposit Cash
-                    screenMessage.setText("Feature 'Deposit Cash' not implemented yet.");
-                    break;
-                case "R3": // Exit Application
-                    javafx.application.Platform.exit();
-                    break;
-                default:
-                    break;
-            }
-        } else {
-            // Options when card is inserted
-            switch (optionCode) {
-                case "L1": // Withdraw
-                    screenMessage.setText("Withdraw feature not implemented.");
-                    break;
-                case "R1": // Deposit
-                    screenMessage.setText("Deposit feature not implemented.");
-                    break;
-                case "L2": // Check Balance
-                    screenMessage.setText("Balance check not implemented.");
-                    break;
-                case "R2": // Eject Card
-                    ejectCard();
-                    break;
-                default:
-                    break;
-            }
+        switch (currentMode) {
+            case WELCOME:
+                handleWelcomeOptions(optionCode);
+                break;
+            case CARD_INPUT:
+            case PIN_INPUT:
+                // Usually buttons are disabled or have limited function (like Cancel/Exit)
+                // We'll allow "Exit" or "Cancel" if mapped
+                if (optionCode.equals("R4")) { // Assume R4 is Exit/Cancel roughly
+                    resetSession();
+                }
+                break;
+            case LOGGED_IN:
+                handleLoggedInOptions(optionCode);
+                break;
         }
     }
 
-    private void simulateCardInsertion() {
-        // Simulate finding a card to insert
-        if (!service.listAccounts().isEmpty()) {
-            currentCardNumber = service.listAccounts().get(0).getCardNumber();
-        } else {
-            // Fallback if no accounts exist
-            currentCardNumber = "123456789012";
+    private void handleWelcomeOptions(String code) {
+        switch (code) {
+            case "L1": // Create Account
+                loadCreateAccount();
+                break;
+            case "L2": // Insert Card
+                enterCardInputMode();
+                break;
+            case "R2": // Exit
+                javafx.application.Platform.exit();
+                break;
+            default:
+                screenMessage.setText("Please insert card to continue.");
         }
+    }
 
-        cardInserted = true;
+    private void handleLoggedInOptions(String code) {
+        switch (code) {
+            case "L1":
+                screenMessage.setText("Withdraw feature coming soon.");
+                break;
+            case "L2":
+                screenMessage.setText("Check Balance feature coming soon.");
+                break;
+            case "R1":
+                screenMessage.setText("Deposit feature coming soon.");
+                break;
+            case "R2": // Eject Card
+                ejectCard();
+                break;
+        }
+    }
+
+    private void loadCreateAccount() {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                    getClass().getResource("create-account.fxml"));
+            javafx.scene.Parent root = loader.load();
+            BanglaBankController controller = loader.getController();
+            controller.showCreateAccount();
+            screenMessage.getScene().setRoot(root);
+        } catch (Exception e) {
+            e.printStackTrace();
+            screenMessage.setText("Error loading Create Account screen.");
+        }
+    }
+
+    private void enterCardInputMode() {
+        currentMode = AtmMode.CARD_INPUT;
+        screenMessage.setText("Please enter your Card Number using the keypad.");
+        updateOptions();
         animateCardReader();
-        screenMessage.setText("Card inserted. Enter PIN and press OK.");
+    }
+
+    private void resetSession() {
+        currentCardNumber = null;
+        failedAttempts = 0;
+        currentMode = AtmMode.WELCOME;
         updateOptions();
     }
 
     private void ejectCard() {
-        cardInserted = false;
-        currentCardNumber = null;
-        screenMessage.setText("Card ejected. Please take your card.");
-        updateOptions();
+        screenMessage.setText("Card Ejected. Thank you.");
+        resetSession();
     }
 
     private void updateOptions() {
         if (optionLeft1 == null)
             return;
 
-        // Clear all first
+        // Clear all
         optionLeft1.setText("");
         optionRight1.setText("");
         optionLeft2.setText("");
@@ -225,25 +297,26 @@ public class AtmController {
         optionLeft4.setText("");
         optionRight4.setText("");
 
-        if (cardInserted) {
+        if (currentMode == AtmMode.WELCOME) {
+            optionLeft1.setText("Create Account");
+            optionLeft2.setText("Insert Card");
+            optionRight1.setText("Forgot PIN");
+            optionRight2.setText("Exit");
+        } else if (currentMode == AtmMode.LOGGED_IN) {
             optionLeft1.setText("Withdraw");
             optionRight1.setText("Deposit");
             optionLeft2.setText("Check Balance");
             optionRight2.setText("Eject Card");
-        } else {
-            optionLeft1.setText("Create Account");
-            optionRight1.setText("Forgot PIN");
-            optionLeft2.setText("Insert Card");
-            optionRight2.setText("Deposit Cash");
-            optionRight3.setText("Exit Bangla Bank");
+        } else if (currentMode == AtmMode.CARD_INPUT) {
+            optionRight4.setText("Cancel");
+        } else if (currentMode == AtmMode.PIN_INPUT) {
+            optionRight4.setText("Cancel");
         }
     }
 
     private void animateCardReader() {
         if (cardReaderSlot == null)
             return;
-
-        // Flash effect or slide effect
         Timeline t = new Timeline(
                 new KeyFrame(Duration.ZERO, new KeyValue(cardReaderSlot.opacityProperty(), 1.0)),
                 new KeyFrame(Duration.millis(200), new KeyValue(cardReaderSlot.opacityProperty(), 0.3)),
