@@ -295,7 +295,13 @@ public class AtmController {
                 updateOptions();
                 break;
             case "L2":
-                screenMessage.setText("Check Balance feature coming soon.");
+                Account acc = service.findByCardNumber(currentCardNumber).orElse(null);
+                if (acc != null) {
+                    screenMessage
+                            .setText("Your Current Balance is: " + String.format("%.2f", acc.getBalance()) + " TK");
+                } else {
+                    screenMessage.setText("Error retrieving balance.");
+                }
                 break;
             case "R1": // Deposit
                 currentMode = AtmMode.DEPOSIT_INPUT;
