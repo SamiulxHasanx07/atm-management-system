@@ -15,7 +15,8 @@ import javafx.util.Duration;
 public class AtmController {
 
     private enum AtmMode {
-        WELCOME, CARD_INPUT, PIN_INPUT, LOGGED_IN, DEPOSIT_INPUT, WITHDRAW_INPUT
+        WELCOME, CARD_INPUT, PIN_INPUT, LOGGED_IN, DEPOSIT_INPUT, WITHDRAW_INPUT,
+        FP_ENTER_CARD, FP_ENTER_IDENTITY
     }
 
     @FXML
@@ -87,6 +88,10 @@ public class AtmController {
             handleDepositInput(input);
         } else if (currentMode == AtmMode.WITHDRAW_INPUT) {
             handleWithdrawInput(input);
+        } else if (currentMode == AtmMode.FP_ENTER_CARD) {
+            handleForgotPinCardInput(input);
+        } else if (currentMode == AtmMode.FP_ENTER_IDENTITY) {
+            handleForgotPinIdentityInput(input);
         } else if (currentMode == AtmMode.WELCOME) {
             screenMessage.setText("Please select an option.");
         }
@@ -200,6 +205,46 @@ public class AtmController {
         }
     }
 
+    private void handleForgotPinCardInput(String inputCard) {
+        if (inputCard == null || inputCard.length() < 10) {
+            screenMessage.setText("Invalid Card Number. Try again.");
+            return;
+        }
+        // Valid length, check existence
+        Account acc = service.findByCardNumber(inputCard).orElse(null);
+        if (acc == null) {
+            screenMessage.setText("Card not found. Please try again.");
+            return;
+        }
+
+        // Card found, ask for identity
+        currentCardNumber = inputCard; // repurpose this field or add temp one? Repurpose is fine for this flow.
+        currentMode = AtmMode.FP_ENTER_IDENTITY;
+        screenMessage.setText("Enter Registered Phone Number OR NID:");
+        updateOptions();
+    }
+
+    private void handleForgotPinIdentityInput(String identity) {
+        if (identity == null || identity.isEmpty()) {
+            screenMessage.setText("Enter Phone or NID.");
+            return;
+        }
+
+        try {
+            String newPin = service.resetPin(currentCardNumber, identity);
+            screenMessage.setText("Success! New PIN: " + newPin + ". Account Unblocked.");
+            // Reset to welcome or allow login? "return to Welcome" is safer so they can
+            // memorize PIN
+            currentMode = AtmMode.WELCOME;
+            currentCardNumber = null;
+            updateOptions();
+        } catch (IllegalArgumentException e) {
+            screenMessage.setText(e.getMessage());
+        } catch (Exception e) {
+            screenMessage.setText("Error: " + e.getMessage());
+        }
+    }
+
     // Left Side Buttons
     @FXML
     private void onSideBtnLeft1() {
@@ -251,17 +296,18 @@ public class AtmController {
             case PIN_INPUT:
             case DEPOSIT_INPUT:
             case WITHDRAW_INPUT:
+            case FP_ENTER_CARD:
+            case FP_ENTER_IDENTITY:
                 // Usually buttons are disabled or have limited function (like Cancel/Exit)
                 // We'll allow "Exit" or "Cancel" if mapped
                 if (optionCode.equals("R4")) { // Assume R4 is Exit/Cancel roughly
                     // If in txn mode, go back to logged in? Or Eject?
-                    // Usually cancel txn goes back to menu
                     if (currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT) {
                         currentMode = AtmMode.LOGGED_IN;
                         screenMessage.setText("Transaction Cancelled.");
                         updateOptions();
                     } else {
-                        resetSession(); // Card/PIN input cancel -> Reset
+                        resetSession(); // Card/PIN/ForgotPIN input cancel -> Reset
                     }
                 }
                 break;
@@ -278,6 +324,9 @@ public class AtmController {
                 break;
             case "L2": // Insert Card
                 enterCardInputMode();
+                break;
+            case "R1": // Forgot PIN
+                enterForgotPinMode();
                 break;
             case "R2": // Exit
                 javafx.application.Platform.exit();
@@ -335,6 +384,12 @@ public class AtmController {
         animateCardReader();
     }
 
+    private void enterForgotPinMode() {
+        currentMode = AtmMode.FP_ENTER_CARD;
+        screenMessage.setText("Enter Card Number to reset PIN.");
+        updateOptions();
+    }
+
     private void resetSession() {
         currentCardNumber = null;
         failedAttempts = 0;
@@ -372,7 +427,8 @@ public class AtmController {
             optionLeft2.setText("Check Balance");
             optionRight2.setText("Eject Card");
         } else if (currentMode == AtmMode.CARD_INPUT || currentMode == AtmMode.PIN_INPUT ||
-                currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT) {
+                currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT ||
+                currentMode == AtmMode.FP_ENTER_CARD || currentMode == AtmMode.FP_ENTER_IDENTITY) {
             optionRight4.setText("Cancel");
         }
     }

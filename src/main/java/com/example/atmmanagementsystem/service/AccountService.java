@@ -30,6 +30,8 @@ public interface AccountService {
 
     void withdraw(String cardNumber, double amount);
 
+    String resetPin(String cardNumber, String identityProof);
+
     // Factory method - switching to Database implementation
     static AccountService getInstance() {
         return new DatabaseAccountService();

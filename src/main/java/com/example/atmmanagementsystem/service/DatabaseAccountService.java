@@ -261,4 +261,49 @@ public class DatabaseAccountService implements AccountService {
             throw new RuntimeException("Database error during withdraw: " + e.getMessage());
         }
     }
+
+    @Override
+    public String resetPin(String cardNumber, String identityProof) {
+        Account acc = findByCardNumber(cardNumber).orElseThrow(() -> new IllegalArgumentException("Card not found"));
+
+        // Check identity (Phone or NID)
+        boolean matchPhone = acc.getPhoneNumber() != null && acc.getPhoneNumber().endsWith(identityProof);
+        // Note: Using endsWith for phone to be lenient if format differs, or exact
+        // match?
+        // User said "provide phone or nid". Let's try exact match on NID, and match on
+        // digits for phone.
+        // Actually, let's keep it simple: Exact match on (Phone OR NID).
+
+        boolean valid = false;
+        if (identityProof.equals(acc.getNid())) {
+            valid = true;
+        } else if (acc.getPhoneNumber() != null && acc.getPhoneNumber().equals(identityProof)) {
+            valid = true;
+        }
+
+        if (!valid) {
+            throw new IllegalArgumentException("Identity verification failed. Phone Number or NID does not match.");
+        }
+
+        // Generate New PIN
+        String newPin = generatePin();
+        String hashedPin = com.example.atmmanagementsystem.util.SecurityUtil.hashPin(newPin);
+
+        String sql = "UPDATE accounts SET pin = ?, blocked = FALSE WHERE card_number = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, hashedPin);
+            pstmt.setString(2, cardNumber);
+            int rows = pstmt.executeUpdate();
+            if (rows == 0)
+                throw new SQLException("Reset PIN failed: Card not found during update");
+
+            return newPin;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Database error during PIN reset: " + e.getMessage());
+        }
+    }
 }
