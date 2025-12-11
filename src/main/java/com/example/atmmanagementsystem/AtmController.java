@@ -15,7 +15,7 @@ import javafx.util.Duration;
 public class AtmController {
 
     private enum AtmMode {
-        WELCOME, CARD_INPUT, PIN_INPUT, LOGGED_IN
+        WELCOME, CARD_INPUT, PIN_INPUT, LOGGED_IN, DEPOSIT_INPUT, WITHDRAW_INPUT
     }
 
     @FXML
@@ -83,6 +83,10 @@ public class AtmController {
             handleCardInput(input);
         } else if (currentMode == AtmMode.PIN_INPUT) {
             handlePinInput(input);
+        } else if (currentMode == AtmMode.DEPOSIT_INPUT) {
+            handleDepositInput(input);
+        } else if (currentMode == AtmMode.WITHDRAW_INPUT) {
+            handleWithdrawInput(input);
         } else if (currentMode == AtmMode.WELCOME) {
             screenMessage.setText("Please select an option.");
         }
@@ -156,6 +160,46 @@ public class AtmController {
         }
     }
 
+    private void handleDepositInput(String input) {
+        try {
+            double amount = Double.parseDouble(input);
+            service.deposit(currentCardNumber, amount);
+
+            Account updatedAcc = service.findByCardNumber(currentCardNumber).orElse(null);
+            String balanceStr = (updatedAcc != null) ? String.format("%.2f", updatedAcc.getBalance()) : "N/A";
+
+            screenMessage.setText("Deposited " + String.format("%.0f", amount) + " TK. Balance: " + balanceStr + " TK");
+            currentMode = AtmMode.LOGGED_IN;
+            updateOptions();
+        } catch (NumberFormatException e) {
+            screenMessage.setText("Invalid amount. Enter numbers only.");
+        } catch (IllegalArgumentException e) {
+            screenMessage.setText(e.getMessage());
+        } catch (Exception e) {
+            screenMessage.setText("Error: " + e.getMessage());
+        }
+    }
+
+    private void handleWithdrawInput(String input) {
+        try {
+            double amount = Double.parseDouble(input);
+            service.withdraw(currentCardNumber, amount);
+
+            Account updatedAcc = service.findByCardNumber(currentCardNumber).orElse(null);
+            String balanceStr = (updatedAcc != null) ? String.format("%.2f", updatedAcc.getBalance()) : "N/A";
+
+            screenMessage.setText("Withdrawn " + String.format("%.0f", amount) + " TK. Balance: " + balanceStr + " TK");
+            currentMode = AtmMode.LOGGED_IN;
+            updateOptions();
+        } catch (NumberFormatException e) {
+            screenMessage.setText("Invalid amount. Enter numbers only.");
+        } catch (IllegalArgumentException e) {
+            screenMessage.setText(e.getMessage());
+        } catch (Exception e) {
+            screenMessage.setText("Error: " + e.getMessage());
+        }
+    }
+
     // Left Side Buttons
     @FXML
     private void onSideBtnLeft1() {
@@ -205,10 +249,20 @@ public class AtmController {
                 break;
             case CARD_INPUT:
             case PIN_INPUT:
+            case DEPOSIT_INPUT:
+            case WITHDRAW_INPUT:
                 // Usually buttons are disabled or have limited function (like Cancel/Exit)
                 // We'll allow "Exit" or "Cancel" if mapped
                 if (optionCode.equals("R4")) { // Assume R4 is Exit/Cancel roughly
-                    resetSession();
+                    // If in txn mode, go back to logged in? Or Eject?
+                    // Usually cancel txn goes back to menu
+                    if (currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT) {
+                        currentMode = AtmMode.LOGGED_IN;
+                        screenMessage.setText("Transaction Cancelled.");
+                        updateOptions();
+                    } else {
+                        resetSession(); // Card/PIN input cancel -> Reset
+                    }
                 }
                 break;
             case LOGGED_IN:
@@ -235,14 +289,18 @@ public class AtmController {
 
     private void handleLoggedInOptions(String code) {
         switch (code) {
-            case "L1":
-                screenMessage.setText("Withdraw feature coming soon.");
+            case "L1": // Withdraw
+                currentMode = AtmMode.WITHDRAW_INPUT;
+                screenMessage.setText("Enter Amount (Multiple of 500):");
+                updateOptions();
                 break;
             case "L2":
                 screenMessage.setText("Check Balance feature coming soon.");
                 break;
-            case "R1":
-                screenMessage.setText("Deposit feature coming soon.");
+            case "R1": // Deposit
+                currentMode = AtmMode.DEPOSIT_INPUT;
+                screenMessage.setText("Enter Amount (Multiple of 500):");
+                updateOptions();
                 break;
             case "R2": // Eject Card
                 ejectCard();
@@ -307,9 +365,8 @@ public class AtmController {
             optionRight1.setText("Deposit");
             optionLeft2.setText("Check Balance");
             optionRight2.setText("Eject Card");
-        } else if (currentMode == AtmMode.CARD_INPUT) {
-            optionRight4.setText("Cancel");
-        } else if (currentMode == AtmMode.PIN_INPUT) {
+        } else if (currentMode == AtmMode.CARD_INPUT || currentMode == AtmMode.PIN_INPUT ||
+                currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT) {
             optionRight4.setText("Cancel");
         }
     }
