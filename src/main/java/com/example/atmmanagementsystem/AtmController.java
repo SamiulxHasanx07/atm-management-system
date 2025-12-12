@@ -112,12 +112,6 @@ public class AtmController {
 
         if (acc.isBlocked()) {
             screenMessage.setText("This card is BLOCKED. Please contact bank.");
-            // Reset to welcome after delay or immediate?
-            // For now, let them see the message, they can press Exit or Eject (if we had
-            // one in this state)
-            // But strict requirement: "redirect main menu" on eject.
-            // Let's just create a temporary state or stay in CARD_INPUT but show error?
-            // Safest: Go back to Welcome? Or just reset input.
             currentMode = AtmMode.WELCOME;
             updateOptions();
             return;
@@ -298,7 +292,6 @@ public class AtmController {
             case WITHDRAW_INPUT:
             case FP_ENTER_CARD:
             case FP_ENTER_IDENTITY:
-                // Usually buttons are disabled or have limited function (like Cancel/Exit)
                 // We'll allow "Exit" or "Cancel" if mapped
                 if (optionCode.equals("R4")) { // Assume R4 is Exit/Cancel roughly
                     // If in txn mode, go back to logged in? Or Eject?
