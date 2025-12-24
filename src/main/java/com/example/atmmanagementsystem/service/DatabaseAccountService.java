@@ -214,20 +214,69 @@ public class DatabaseAccountService implements AccountService {
         if (amount % 500 != 0) {
             throw new IllegalArgumentException("Amount must be a multiple of 500");
         }
+        if (amount < 500) {
+            throw new IllegalArgumentException("Minimum deposit amount is 500 TK");
+        }
+        if (amount > 25000) {
+            throw new IllegalArgumentException("Maximum deposit amount per transaction is 25,000 TK");
+        }
 
-        String sql = "UPDATE accounts SET balance = balance + ? WHERE card_number = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        // Check Daily Limit (Amount)
+        double dailyTotal = getDailyTotal(cardNumber, "DEPOSIT");
+        if (dailyTotal + amount > 50000) {
+            throw new IllegalArgumentException(
+                    "Daily deposit limit is 50,000 TK. You can deposit " + (50000 - dailyTotal) + " TK more today.");
+        }
 
-            pstmt.setDouble(1, amount);
-            pstmt.setString(2, cardNumber);
-            int rows = pstmt.executeUpdate();
-            if (rows == 0)
-                throw new SQLException("Deposit failed: Card not found");
+        // Check Daily Limit (Count)
+        int dailyCount = getDailyCount(cardNumber, "DEPOSIT");
+        if (dailyCount >= 5) {
+            throw new IllegalArgumentException("Daily deposit transaction limit (5 times) reached.");
+        }
 
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false); // Transaction start
+
+            // 1. Update Balance
+            try (PreparedStatement updateStmt = conn
+                    .prepareStatement("UPDATE accounts SET balance = balance + ? WHERE card_number = ?")) {
+                updateStmt.setDouble(1, amount);
+                updateStmt.setString(2, cardNumber);
+                int rows = updateStmt.executeUpdate();
+                if (rows == 0)
+                    throw new SQLException("Deposit failed: Card not found");
+            }
+
+            // 2. Insert Transaction Record
+            try (PreparedStatement insertStmt = conn.prepareStatement(
+                    "INSERT INTO transactions (card_number, amount, transaction_type) VALUES (?, ?, ?)")) {
+                insertStmt.setString(1, cardNumber);
+                insertStmt.setDouble(2, amount);
+                insertStmt.setString(3, "DEPOSIT");
+                insertStmt.executeUpdate();
+            }
+
+            conn.commit();
         } catch (SQLException e) {
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
             e.printStackTrace();
             throw new RuntimeException("Database error during deposit: " + e.getMessage());
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
         }
     }
 
@@ -239,6 +288,12 @@ public class DatabaseAccountService implements AccountService {
         if (amount % 500 != 0) {
             throw new IllegalArgumentException("Amount must be a multiple of 500");
         }
+        if (amount < 500) {
+            throw new IllegalArgumentException("Minimum withdraw amount is 500 TK");
+        }
+        if (amount > 25000) {
+            throw new IllegalArgumentException("Maximum withdraw amount per transaction is 25,000 TK");
+        }
 
         // Check balance first
         Account acc = findByCardNumber(cardNumber).orElseThrow(() -> new IllegalArgumentException("Card not found"));
@@ -246,20 +301,97 @@ public class DatabaseAccountService implements AccountService {
             throw new IllegalArgumentException("Insufficient funds. Minimum balance of 500 TK required.");
         }
 
-        String sql = "UPDATE accounts SET balance = balance - ? WHERE card_number = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        // Check Daily Limit (Amount)
+        double dailyTotal = getDailyTotal(cardNumber, "WITHDRAW");
+        if (dailyTotal + amount > 50000) {
+            throw new IllegalArgumentException("Daily withdrawal limit is 50,000 TK. You can withdraw "
+                    + (50000 - dailyTotal) + " TK more today.");
+        }
 
-            pstmt.setDouble(1, amount);
-            pstmt.setString(2, cardNumber);
-            int rows = pstmt.executeUpdate();
-            if (rows == 0)
-                throw new SQLException("Withdraw failed: Card not found");
+        // Check Daily Limit (Count)
+        int dailyCount = getDailyCount(cardNumber, "WITHDRAW");
+        if (dailyCount >= 5) {
+            throw new IllegalArgumentException("Daily withdrawal transaction limit (5 times) reached.");
+        }
 
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false); // Transaction start
+
+            // 1. Update Balance
+            try (PreparedStatement updateStmt = conn
+                    .prepareStatement("UPDATE accounts SET balance = balance - ? WHERE card_number = ?")) {
+                updateStmt.setDouble(1, amount);
+                updateStmt.setString(2, cardNumber);
+                int rows = updateStmt.executeUpdate();
+                if (rows == 0)
+                    throw new SQLException("Withdraw failed: Card not found");
+            }
+
+            // 2. Insert Transaction Record
+            try (PreparedStatement insertStmt = conn.prepareStatement(
+                    "INSERT INTO transactions (card_number, amount, transaction_type) VALUES (?, ?, ?)")) {
+                insertStmt.setString(1, cardNumber);
+                insertStmt.setDouble(2, amount);
+                insertStmt.setString(3, "WITHDRAW");
+                insertStmt.executeUpdate();
+            }
+
+            conn.commit();
         } catch (SQLException e) {
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
             e.printStackTrace();
             throw new RuntimeException("Database error during withdraw: " + e.getMessage());
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
         }
+    }
+
+    private double getDailyTotal(String cardNumber, String type) {
+        String sql = "SELECT SUM(amount) FROM transactions WHERE card_number = ? AND transaction_type = ? AND DATE(timestamp) = CURDATE()";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, cardNumber);
+            pstmt.setString(2, type);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0.0;
+    }
+
+    private int getDailyCount(String cardNumber, String type) {
+        String sql = "SELECT COUNT(*) FROM transactions WHERE card_number = ? AND transaction_type = ? AND DATE(timestamp) = CURDATE()";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, cardNumber);
+            pstmt.setString(2, type);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 
     @Override

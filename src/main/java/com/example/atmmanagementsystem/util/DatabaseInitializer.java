@@ -51,6 +51,16 @@ public class DatabaseInitializer {
                 } catch (SQLException e) {
                     // Ignore
                 }
+
+                String trxTable = "CREATE TABLE IF NOT EXISTS transactions (" +
+                        "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                        "card_number VARCHAR(20) NOT NULL, " +
+                        "amount DECIMAL(15, 2) NOT NULL, " +
+                        "transaction_type VARCHAR(20) NOT NULL, " +
+                        "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "FOREIGN KEY (card_number) REFERENCES accounts(card_number)" +
+                        ")";
+                stmt.execute(trxTable);
             }
 
             System.out.println("Database and tables initialized successfully.");
