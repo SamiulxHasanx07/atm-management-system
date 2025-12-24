@@ -2,12 +2,6 @@ package com.example.atmmanagementsystem.model;
 
 import java.util.Objects;
 
-/**
- * Simple Account model with basic validation and encapsulation.
- * Assumptions:
- * - phone numbers are 10-15 digits
- * - initial deposit must be >= MIN_INITIAL_DEPOSIT
- */
 public class Account {
     public static final double MIN_INITIAL_DEPOSIT = 100.0; // assumption: minimum required
 

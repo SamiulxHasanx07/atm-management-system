@@ -4,9 +4,6 @@ import com.example.atmmanagementsystem.model.Account;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Interface defining the contract for Account operations.
- */
 public interface AccountService {
 
     Account createAccount(String name, String phone, double initialDeposit,
