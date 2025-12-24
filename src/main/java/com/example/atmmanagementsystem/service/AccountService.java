@@ -33,6 +33,8 @@ public interface AccountService {
 
     void unblockAccount(String cardNumber);
 
+    List<com.example.atmmanagementsystem.model.Transaction> getTransactions(String cardNumber);
+
     // Factory method - switching to Database implementation
     static AccountService getInstance() {
         return new DatabaseAccountService();

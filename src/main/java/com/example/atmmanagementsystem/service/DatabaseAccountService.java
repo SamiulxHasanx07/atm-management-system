@@ -485,4 +485,29 @@ public class DatabaseAccountService implements AccountService {
             throw new RuntimeException("Error unblocking account: " + e.getMessage());
         }
     }
+
+    @Override
+    public List<com.example.atmmanagementsystem.model.Transaction> getTransactions(String cardNumber) {
+        List<com.example.atmmanagementsystem.model.Transaction> list = new ArrayList<>();
+        String sql = "SELECT * FROM transactions WHERE card_number = ? ORDER BY timestamp DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, cardNumber);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new com.example.atmmanagementsystem.model.Transaction(
+                            rs.getInt("id"),
+                            rs.getString("card_number"),
+                            rs.getDouble("amount"),
+                            rs.getString("transaction_type"),
+                            rs.getTimestamp("timestamp")));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 }

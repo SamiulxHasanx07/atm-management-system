@@ -654,6 +654,9 @@ public class AtmController {
                 screenMessage.setText("Enter New PIN (4 digits):");
                 updateOptions();
                 break;
+            case "L4": // Mini Statement
+                loadMiniStatement();
+                break;
         }
     }
 
@@ -668,6 +671,20 @@ public class AtmController {
         } catch (Exception e) {
             e.printStackTrace();
             screenMessage.setText("Error loading Create Account screen.");
+        }
+    }
+
+    private void loadMiniStatement() {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                    getClass().getResource("mini-statement.fxml"));
+            javafx.scene.Parent root = loader.load();
+            MiniStatementController controller = loader.getController();
+            controller.setCardNumber(currentCardNumber);
+            screenMessage.getScene().setRoot(root);
+        } catch (Exception e) {
+            e.printStackTrace();
+            screenMessage.setText("Error loading Mini Statement screen.");
         }
     }
 
@@ -694,6 +711,21 @@ public class AtmController {
     private void ejectCard() {
         screenMessage.setText("Card Ejected. Thank you.");
         resetSession();
+    }
+
+    public void restoreSession(String cardNumber) {
+        this.currentCardNumber = cardNumber;
+        this.currentMode = AtmMode.LOGGED_IN;
+        this.failedAttempts = 0;
+
+        // Fetch account to greet properly (optional, or just generic welcome back)
+        Account acc = service.findByCardNumber(cardNumber).orElse(null);
+        if (acc != null) {
+            screenMessage.setText("Welcome Back, " + acc.getName());
+        } else {
+            screenMessage.setText("Welcome Back.");
+        }
+        updateOptions();
     }
 
     private void enterDisableCardMode() {
@@ -735,6 +767,7 @@ public class AtmController {
             optionLeft2.setText("Check Balance");
             optionRight2.setText("Eject Card");
             optionLeft3.setText("Change PIN");
+            optionLeft4.setText("Mini Statement");
         } else if (currentMode == AtmMode.CARD_INPUT || currentMode == AtmMode.PIN_INPUT ||
                 currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT ||
                 currentMode == AtmMode.FP_ENTER_CARD || currentMode == AtmMode.FP_ENTER_NID ||

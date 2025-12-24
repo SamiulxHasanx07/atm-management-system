@@ -166,3 +166,54 @@
     -fx-background-color: linear-gradient(to bottom, #3e4c59, #2e3a45); /* Keeping consistent with design */
     -fx-text-fill: #ffffff;
 }
+
+/* TableView Styling - White Theme */
+.table-view {
+    -fx-background-color: #ffffff;
+    -fx-border-color: rgba(0, 0, 0, 0.1);
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #e0e0e0;
+}
+
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent rgba(0, 0, 0, 0.1) transparent;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #000000;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-weight: bold;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 0 0 0 10;
+}
+
+.table-view .table-cell {
+    -fx-text-fill: #000000;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 0 0 0 10;
+}
+
+.table-row-cell {
+    -fx-background-color: #ffffff; 
+    -fx-border-color: transparent transparent rgba(0, 0, 0, 0.05) transparent;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #f9f9f9;
+}
+
+.table-row-cell:empty {
+    -fx-background-color: #ffffff;
+    -fx-border-color: transparent;
+}
+
+.table-view .scroll-bar:vertical .thumb {
+    -fx-background-color: #cccccc;
+}
+
+.table-view .scroll-bar:vertical .track {
+    -fx-background-color: #f0f0f0;
+}
