@@ -338,4 +338,19 @@ public class DatabaseAccountService implements AccountService {
             throw new RuntimeException("Database error during PIN update: " + e.getMessage());
         }
     }
+
+    @Override
+    public void unblockAccount(String cardNumber) {
+        String sql = "UPDATE accounts SET blocked = FALSE WHERE card_number = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, cardNumber);
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error unblocking account: " + e.getMessage());
+        }
+    }
 }

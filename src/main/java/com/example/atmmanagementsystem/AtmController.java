@@ -16,7 +16,8 @@ public class AtmController {
 
     private enum AtmMode {
         WELCOME, CARD_INPUT, PIN_INPUT, LOGGED_IN, DEPOSIT_INPUT, WITHDRAW_INPUT,
-        FP_ENTER_CARD, FP_ENTER_IDENTITY, CHANGE_PIN_INPUT, CHANGE_PIN_CONFIRM
+        FP_ENTER_CARD, FP_ENTER_NID, FP_NEW_PIN, FP_CONFIRM_PIN,
+        CHANGE_PIN_INPUT, CHANGE_PIN_CONFIRM
     }
 
     @FXML
@@ -91,8 +92,14 @@ public class AtmController {
             handleWithdrawInput(input);
         } else if (currentMode == AtmMode.FP_ENTER_CARD) {
             handleForgotPinCardInput(input);
-        } else if (currentMode == AtmMode.FP_ENTER_IDENTITY) {
-            handleForgotPinIdentityInput(input);
+        } else if (currentMode == AtmMode.FP_ENTER_CARD) {
+            handleForgotPinCardInput(input);
+        } else if (currentMode == AtmMode.FP_ENTER_NID) {
+            handleForgotPinNidInput(input);
+        } else if (currentMode == AtmMode.FP_NEW_PIN) {
+            handleForgotPinNewPinInput(input);
+        } else if (currentMode == AtmMode.FP_CONFIRM_PIN) {
+            handleForgotPinConfirmInput(input);
         } else if (currentMode == AtmMode.CHANGE_PIN_INPUT) {
             handleChangePinNewInput(input);
         } else if (currentMode == AtmMode.CHANGE_PIN_CONFIRM) {
@@ -217,28 +224,93 @@ public class AtmController {
         }
 
         // Card found, ask for identity
-        currentCardNumber = inputCard; // repurpose this field or add temp one? Repurpose is fine for this flow.
-        currentMode = AtmMode.FP_ENTER_IDENTITY;
-        screenMessage.setText("Enter Registered Phone Number OR NID:");
+        currentCardNumber = inputCard;
+        currentMode = AtmMode.FP_ENTER_NID;
+        screenMessage.setText("Enter Last 4 Digits of NID (******____):");
         updateOptions();
     }
 
-    private void handleForgotPinIdentityInput(String identity) {
-        if (identity == null || identity.isEmpty()) {
-            screenMessage.setText("Enter Phone or NID.");
+    private void handleForgotPinNidInput(String input) {
+        if (input == null || !input.matches("\\d{4}")) {
+            screenMessage.setText("Enter exactly 4 digits of NID.");
+            return;
+        }
+
+        Account acc = service.findByCardNumber(currentCardNumber).orElse(null);
+        if (acc == null) {
+            resetSession();
+            screenMessage.setText("System Error: Card not found.");
+            return;
+        }
+
+        String fullNid = acc.getNid();
+        if (fullNid == null || fullNid.length() < 4) {
+            screenMessage.setText("NID data invalid. Contact Bank.");
+            return;
+        }
+
+        String last4 = fullNid.substring(fullNid.length() - 4);
+        if (input.equals(last4)) {
+            // Success match
+            currentMode = AtmMode.FP_NEW_PIN;
+            screenMessage.setText("Verified! Enter New PIN (4 digits):");
+            updateOptions();
+        } else {
+            screenMessage.setText("Incorrect NID digits. Try again.");
+        }
+    }
+
+    private void handleForgotPinNewPinInput(String newPin) {
+        if (newPin == null || !newPin.matches("\\d{4}")) {
+            screenMessage.setText("Invalid PIN format. Enter 4 digits.");
+            return;
+        }
+        tempNewPin = newPin;
+        currentMode = AtmMode.FP_CONFIRM_PIN;
+        screenMessage.setText("Confirm New PIN:");
+        updateOptions();
+    }
+
+    private void handleForgotPinConfirmInput(String confirmPin) {
+        if (confirmPin == null || !confirmPin.equals(tempNewPin)) {
+            screenMessage.setText("PIN mismatch. Start over.");
+            currentMode = AtmMode.FP_NEW_PIN;
+            screenMessage.setText("Enter New PIN (4 digits):");
+            tempNewPin = null;
+            updateOptions();
             return;
         }
 
         try {
-            String newPin = service.resetPin(currentCardNumber, identity);
-            screenMessage.setText("Success! New PIN: " + newPin + ". Account Unblocked.");
-            // Reset to welcome or allow login? "return to Welcome" is safer so they can
-            // memorize PIN
-            currentMode = AtmMode.WELCOME;
-            currentCardNumber = null;
-            updateOptions();
+            // Update PIN directly (check against old PIN not strictly required here as they
+            // forgot it,
+            // but updatePin might enforce it if using the same service method.
+            // The service method throws if newPin == oldPin.
+            // If user enters SAME pin as forgot pin, it will error. This is acceptable?
+            // Yes, "New PIN cannot be same as old PIN" is a valid security rule even if
+            // forgot.
+            service.updatePin(currentCardNumber, confirmPin);
+
+            // Unblock if blocked
+            // Note: updatePin does NOT unblock automatically in our previous implementation
+            // of updatePin
+            // But resetPin DID. We probably should unblock here.
+            // Let's create a new service method or add unblock logic?
+            // OR just call resetPin logic but providing the new PIN?
+            // Actually, updatePin in DatabaseAccountService does: "UPDATE accounts SET pin
+            // = ? ..."
+            // It does NOT unblock.
+            // We need to unblock.
+            service.unblockAccount(currentCardNumber); // We need to add this method or direct DB call?
+            // Or update updatePin to unblock?
+            // Let's rely on updatePin for now, and realized we need to unblock.
+
+            screenMessage.setText("PIN Reset Success! Please Login.");
+            resetSession();
         } catch (IllegalArgumentException e) {
             screenMessage.setText(e.getMessage());
+            currentMode = AtmMode.FP_NEW_PIN;
+            updateOptions();
         } catch (Exception e) {
             screenMessage.setText("Error: " + e.getMessage());
         }
@@ -334,7 +406,9 @@ public class AtmController {
             case DEPOSIT_INPUT:
             case WITHDRAW_INPUT:
             case FP_ENTER_CARD:
-            case FP_ENTER_IDENTITY:
+            case FP_ENTER_NID:
+            case FP_NEW_PIN:
+            case FP_CONFIRM_PIN:
                 // We'll allow "Exit" or "Cancel" if mapped
                 if (optionCode.equals("R4")) { // Assume R4 is Exit/Cancel roughly
                     // If in txn mode, go back to logged in? Or Eject?
@@ -480,7 +554,8 @@ public class AtmController {
             optionLeft3.setText("Change PIN");
         } else if (currentMode == AtmMode.CARD_INPUT || currentMode == AtmMode.PIN_INPUT ||
                 currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT ||
-                currentMode == AtmMode.FP_ENTER_CARD || currentMode == AtmMode.FP_ENTER_IDENTITY ||
+                currentMode == AtmMode.FP_ENTER_CARD || currentMode == AtmMode.FP_ENTER_NID ||
+                currentMode == AtmMode.FP_NEW_PIN || currentMode == AtmMode.FP_CONFIRM_PIN ||
                 currentMode == AtmMode.CHANGE_PIN_INPUT || currentMode == AtmMode.CHANGE_PIN_CONFIRM) {
             optionRight4.setText("Cancel");
         }

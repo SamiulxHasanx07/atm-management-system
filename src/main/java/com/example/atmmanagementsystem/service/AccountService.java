@@ -31,6 +31,8 @@ public interface AccountService {
 
     void updatePin(String cardNumber, String newPin);
 
+    void unblockAccount(String cardNumber);
+
     // Factory method - switching to Database implementation
     static AccountService getInstance() {
         return new DatabaseAccountService();
