@@ -17,7 +17,8 @@ public class AtmController {
     private enum AtmMode {
         WELCOME, CARD_INPUT, PIN_INPUT, LOGGED_IN, DEPOSIT_INPUT, WITHDRAW_INPUT,
         FP_ENTER_CARD, FP_ENTER_NID, FP_NEW_PIN, FP_CONFIRM_PIN,
-        CHANGE_PIN_INPUT, CHANGE_PIN_CONFIRM
+        CHANGE_PIN_INPUT, CHANGE_PIN_CONFIRM,
+        DISABLE_ENTER_CARD, DISABLE_ENTER_NID
     }
 
     @FXML
@@ -104,6 +105,10 @@ public class AtmController {
             handleChangePinNewInput(input);
         } else if (currentMode == AtmMode.CHANGE_PIN_CONFIRM) {
             handleChangePinConfirmInput(input);
+        } else if (currentMode == AtmMode.DISABLE_ENTER_CARD) {
+            handleDisableEnterCard(input);
+        } else if (currentMode == AtmMode.DISABLE_ENTER_NID) {
+            handleDisableEnterNid(input);
         } else if (currentMode == AtmMode.WELCOME) {
             screenMessage.setText("Please select an option.");
         }
@@ -226,7 +231,14 @@ public class AtmController {
         // Card found, ask for identity
         currentCardNumber = inputCard;
         currentMode = AtmMode.FP_ENTER_NID;
-        screenMessage.setText("Enter Last 4 Digits of NID (******____):");
+
+        String nid = acc.getNid();
+        String maskedNid = "****";
+        if (nid != null && nid.length() > 4) {
+            maskedNid = nid.substring(0, nid.length() - 4) + "****";
+        }
+
+        screenMessage.setText("Enter Last 4 Digits of NID " + maskedNid + ":");
         updateOptions();
     }
 
@@ -396,6 +408,61 @@ public class AtmController {
         handleOption("R4");
     }
 
+    private void handleDisableEnterCard(String inputCard) {
+        if (inputCard == null || inputCard.length() < 10) {
+            screenMessage.setText("Invalid Card Number. Try again.");
+            return;
+        }
+        Account acc = service.findByCardNumber(inputCard).orElse(null);
+        if (acc == null) {
+            screenMessage.setText("Card not found. Please try again.");
+            return;
+        }
+        currentCardNumber = inputCard;
+        currentMode = AtmMode.DISABLE_ENTER_NID;
+
+        String nid = acc.getNid();
+        String maskedNid = "****";
+        if (nid != null && nid.length() > 4) {
+            maskedNid = nid.substring(0, nid.length() - 4) + "****";
+        }
+
+        screenMessage.setText("Enter Last 4 Digits of NID " + maskedNid + " to BLOCK:");
+        updateOptions();
+    }
+
+    private void handleDisableEnterNid(String input) {
+        if (input == null || !input.matches("\\d{4}")) {
+            screenMessage.setText("Enter exactly 4 digits of NID.");
+            return;
+        }
+        Account acc = service.findByCardNumber(currentCardNumber).orElse(null);
+        if (acc == null) {
+            resetSession(); // Should not happen usually
+            return;
+        }
+
+        String fullNid = acc.getNid();
+        if (fullNid == null || fullNid.length() < 4) {
+            screenMessage.setText("NID data invalid. Contact Bank.");
+            return;
+        }
+
+        String last4 = fullNid.substring(fullNid.length() - 4);
+        if (input.equals(last4)) {
+            // Match - Block Card
+            try {
+                service.blockAccount(currentCardNumber);
+                screenMessage.setText("Card Successfully BLOCKED. Please contact bank.");
+                resetSession();
+            } catch (Exception e) {
+                screenMessage.setText("Error blocking card: " + e.getMessage());
+            }
+        } else {
+            screenMessage.setText("Incorrect NID digits. Try again.");
+        }
+    }
+
     private void handleOption(String optionCode) {
         switch (currentMode) {
             case WELCOME:
@@ -409,6 +476,8 @@ public class AtmController {
             case FP_ENTER_NID:
             case FP_NEW_PIN:
             case FP_CONFIRM_PIN:
+            case DISABLE_ENTER_CARD:
+            case DISABLE_ENTER_NID:
                 // We'll allow "Exit" or "Cancel" if mapped
                 if (optionCode.equals("R4")) { // Assume R4 is Exit/Cancel roughly
                     // If in txn mode, go back to logged in? Or Eject?
@@ -449,6 +518,9 @@ public class AtmController {
                 break;
             case "R2": // Exit
                 javafx.application.Platform.exit();
+                break;
+            case "L3": // Lost/Disable
+                enterDisableCardMode();
                 break;
             default:
                 screenMessage.setText("Please insert card to continue.");
@@ -527,6 +599,12 @@ public class AtmController {
         resetSession();
     }
 
+    private void enterDisableCardMode() {
+        currentMode = AtmMode.DISABLE_ENTER_CARD;
+        screenMessage.setText("Enter Card Number to Block/Disable:");
+        updateOptions();
+    }
+
     private void updateOptions() {
         if (optionLeft1 == null)
             return;
@@ -544,6 +622,7 @@ public class AtmController {
         if (currentMode == AtmMode.WELCOME) {
             optionLeft1.setText("Create Account");
             optionLeft2.setText("Insert Card");
+            optionLeft3.setText("Card Lost?");
             optionRight1.setText("Forgot PIN");
             optionRight2.setText("Exit");
         } else if (currentMode == AtmMode.LOGGED_IN) {
@@ -556,7 +635,8 @@ public class AtmController {
                 currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT ||
                 currentMode == AtmMode.FP_ENTER_CARD || currentMode == AtmMode.FP_ENTER_NID ||
                 currentMode == AtmMode.FP_NEW_PIN || currentMode == AtmMode.FP_CONFIRM_PIN ||
-                currentMode == AtmMode.CHANGE_PIN_INPUT || currentMode == AtmMode.CHANGE_PIN_CONFIRM) {
+                currentMode == AtmMode.CHANGE_PIN_INPUT || currentMode == AtmMode.CHANGE_PIN_CONFIRM ||
+                currentMode == AtmMode.DISABLE_ENTER_CARD || currentMode == AtmMode.DISABLE_ENTER_NID) {
             optionRight4.setText("Cancel");
         }
     }
