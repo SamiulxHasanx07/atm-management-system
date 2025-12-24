@@ -306,4 +306,36 @@ public class DatabaseAccountService implements AccountService {
             throw new RuntimeException("Database error during PIN reset: " + e.getMessage());
         }
     }
+
+    @Override
+    public void updatePin(String cardNumber, String newPin) {
+        // Check if new PIN is same as old PIN - do this BEFORE opening connection for
+        // update
+        // because findByCardNumber closes the shared connection
+        Account acc = findByCardNumber(cardNumber).orElseThrow(() -> new IllegalArgumentException("Card not found"));
+
+        String hashedPin = com.example.atmmanagementsystem.util.SecurityUtil.hashPin(newPin);
+
+        if (acc.getPin().equals(hashedPin)) {
+            throw new IllegalArgumentException("New PIN cannot be the same as the old PIN.");
+        }
+
+        String sql = "UPDATE accounts SET pin = ? WHERE card_number = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, hashedPin);
+            pstmt.setString(2, cardNumber);
+
+            int rows = pstmt.executeUpdate();
+            if (rows == 0) {
+                throw new SQLException("Update PIN failed: Card not found");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Database error during PIN update: " + e.getMessage());
+        }
+    }
 }

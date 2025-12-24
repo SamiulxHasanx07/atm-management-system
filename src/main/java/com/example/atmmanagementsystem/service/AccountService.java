@@ -29,6 +29,8 @@ public interface AccountService {
 
     String resetPin(String cardNumber, String identityProof);
 
+    void updatePin(String cardNumber, String newPin);
+
     // Factory method - switching to Database implementation
     static AccountService getInstance() {
         return new DatabaseAccountService();

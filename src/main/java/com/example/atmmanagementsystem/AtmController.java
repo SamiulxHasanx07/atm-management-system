@@ -16,7 +16,7 @@ public class AtmController {
 
     private enum AtmMode {
         WELCOME, CARD_INPUT, PIN_INPUT, LOGGED_IN, DEPOSIT_INPUT, WITHDRAW_INPUT,
-        FP_ENTER_CARD, FP_ENTER_IDENTITY
+        FP_ENTER_CARD, FP_ENTER_IDENTITY, CHANGE_PIN_INPUT, CHANGE_PIN_CONFIRM
     }
 
     @FXML
@@ -50,6 +50,7 @@ public class AtmController {
 
     private AtmMode currentMode = AtmMode.WELCOME;
     private String currentCardNumber;
+    private String tempNewPin;
     private int failedAttempts = 0;
 
     private final AccountService service = AccountService.getInstance();
@@ -92,6 +93,10 @@ public class AtmController {
             handleForgotPinCardInput(input);
         } else if (currentMode == AtmMode.FP_ENTER_IDENTITY) {
             handleForgotPinIdentityInput(input);
+        } else if (currentMode == AtmMode.CHANGE_PIN_INPUT) {
+            handleChangePinNewInput(input);
+        } else if (currentMode == AtmMode.CHANGE_PIN_CONFIRM) {
+            handleChangePinConfirmInput(input);
         } else if (currentMode == AtmMode.WELCOME) {
             screenMessage.setText("Please select an option.");
         }
@@ -239,6 +244,44 @@ public class AtmController {
         }
     }
 
+    private void handleChangePinNewInput(String newPin) {
+        if (newPin == null || !newPin.matches("\\d{4}")) {
+            screenMessage.setText("Invalid PIN format. Enter 4 digits.");
+            return;
+        }
+
+        // Save first input and ask for confirmation
+        tempNewPin = newPin;
+        currentMode = AtmMode.CHANGE_PIN_CONFIRM;
+        screenMessage.setText("Please Re-enter PIN to Confirm:");
+        updateOptions();
+    }
+
+    private void handleChangePinConfirmInput(String confirmPin) {
+        if (confirmPin == null || !confirmPin.equals(tempNewPin)) {
+            screenMessage.setText("PIN mismatch. Please start over.");
+            currentMode = AtmMode.CHANGE_PIN_INPUT;
+            screenMessage.setText("Enter New PIN (4 digits):");
+            tempNewPin = null;
+            updateOptions();
+            return;
+        }
+
+        try {
+            service.updatePin(currentCardNumber, confirmPin);
+            screenMessage.setText("PIN Changed Successfully.");
+            currentMode = AtmMode.LOGGED_IN;
+            tempNewPin = null;
+            updateOptions();
+        } catch (IllegalArgumentException e) {
+            screenMessage.setText(e.getMessage());
+            currentMode = AtmMode.CHANGE_PIN_INPUT; // Let them try again
+            updateOptions();
+        } catch (Exception e) {
+            screenMessage.setText("Error: " + e.getMessage());
+        }
+    }
+
     // Left Side Buttons
     @FXML
     private void onSideBtnLeft1() {
@@ -304,6 +347,15 @@ public class AtmController {
                     }
                 }
                 break;
+            case CHANGE_PIN_INPUT:
+            case CHANGE_PIN_CONFIRM:
+                if (optionCode.equals("R4")) {
+                    currentMode = AtmMode.LOGGED_IN;
+                    screenMessage.setText("Change PIN Cancelled.");
+                    tempNewPin = null;
+                    updateOptions();
+                }
+                break;
             case LOGGED_IN:
                 handleLoggedInOptions(optionCode);
                 break;
@@ -352,6 +404,12 @@ public class AtmController {
                 break;
             case "R2": // Eject Card
                 ejectCard();
+                break;
+            case "L3": // Change PIN
+                currentMode = AtmMode.CHANGE_PIN_INPUT;
+                tempNewPin = null;
+                screenMessage.setText("Enter New PIN (4 digits):");
+                updateOptions();
                 break;
         }
     }
@@ -419,9 +477,11 @@ public class AtmController {
             optionRight1.setText("Deposit");
             optionLeft2.setText("Check Balance");
             optionRight2.setText("Eject Card");
+            optionLeft3.setText("Change PIN");
         } else if (currentMode == AtmMode.CARD_INPUT || currentMode == AtmMode.PIN_INPUT ||
                 currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT ||
-                currentMode == AtmMode.FP_ENTER_CARD || currentMode == AtmMode.FP_ENTER_IDENTITY) {
+                currentMode == AtmMode.FP_ENTER_CARD || currentMode == AtmMode.FP_ENTER_IDENTITY ||
+                currentMode == AtmMode.CHANGE_PIN_INPUT || currentMode == AtmMode.CHANGE_PIN_CONFIRM) {
             optionRight4.setText("Cancel");
         }
     }
