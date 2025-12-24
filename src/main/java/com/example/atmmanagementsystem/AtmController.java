@@ -18,7 +18,8 @@ public class AtmController {
         WELCOME, CARD_INPUT, PIN_INPUT, LOGGED_IN, DEPOSIT_INPUT, WITHDRAW_INPUT,
         FP_ENTER_CARD, FP_ENTER_NID, FP_NEW_PIN, FP_CONFIRM_PIN,
         CHANGE_PIN_INPUT, CHANGE_PIN_CONFIRM,
-        DISABLE_ENTER_CARD, DISABLE_ENTER_NID
+        DISABLE_ENTER_CARD, DISABLE_ENTER_NID,
+        DEPOSIT_NO_CARD_ACCOUNT, DEPOSIT_NO_CARD_NID, DEPOSIT_NO_CARD_AMOUNT
     }
 
     @FXML
@@ -109,6 +110,12 @@ public class AtmController {
             handleDisableEnterCard(input);
         } else if (currentMode == AtmMode.DISABLE_ENTER_NID) {
             handleDisableEnterNid(input);
+        } else if (currentMode == AtmMode.DEPOSIT_NO_CARD_ACCOUNT) {
+            handleCardlessDepositAccountInput(input);
+        } else if (currentMode == AtmMode.DEPOSIT_NO_CARD_NID) {
+            handleCardlessDepositNidInput(input);
+        } else if (currentMode == AtmMode.DEPOSIT_NO_CARD_AMOUNT) {
+            handleCardlessDepositAmountInput(input);
         } else if (currentMode == AtmMode.WELCOME) {
             screenMessage.setText("Please select an option.");
         }
@@ -463,6 +470,90 @@ public class AtmController {
         }
     }
 
+    private void handleCardlessDepositAccountInput(String accountNum) {
+        if (accountNum == null || accountNum.length() < 5) {
+            screenMessage.setText("Invalid Account Number.");
+            return;
+        }
+        Account acc = service.findByAccountNumber(accountNum).orElse(null);
+        if (acc == null) {
+            screenMessage.setText("Account not found. Try again.");
+            return;
+        }
+        if (acc.isBlocked()) {
+            screenMessage.setText("Account is BLOCKED. Cannot Deposit.");
+            resetSession();
+            return;
+        }
+
+        currentCardNumber = acc.getCardNumber(); // Store for the transaction
+        currentMode = AtmMode.DEPOSIT_NO_CARD_NID;
+
+        String nid = acc.getNid();
+        String maskedNid = "****";
+        if (nid != null && nid.length() > 4) {
+            maskedNid = nid.substring(0, nid.length() - 4) + "****";
+        }
+
+        screenMessage.setText("Enter match NID digits " + maskedNid + ":");
+        updateOptions();
+    }
+
+    private void handleCardlessDepositNidInput(String input) {
+        if (input == null || !input.matches("\\d{4}")) {
+            screenMessage.setText("Enter exactly 4 digits.");
+            return;
+        }
+        Account acc = service.findByCardNumber(currentCardNumber).orElse(null);
+        // Safety check
+        if (acc == null) {
+            resetSession();
+            return;
+        }
+
+        String fullNid = acc.getNid();
+        if (fullNid == null || fullNid.length() < 4) {
+            screenMessage.setText("NID data invalid.");
+            return;
+        }
+        String last4 = fullNid.substring(fullNid.length() - 4);
+
+        if (input.equals(last4)) {
+            // Success
+            currentMode = AtmMode.DEPOSIT_NO_CARD_AMOUNT;
+            screenMessage.setText("Verified! Enter Amount to Deposit:");
+            updateOptions();
+        } else {
+            screenMessage.setText("Incorrect Digits. Try again.");
+        }
+    }
+
+    private void handleCardlessDepositAmountInput(String input) {
+        try {
+            double amount = Double.parseDouble(input);
+            service.deposit(currentCardNumber, amount);
+
+            Account updatedAcc = service.findByCardNumber(currentCardNumber).orElse(null);
+            String balanceStr = (updatedAcc != null) ? String.format("%.2f", updatedAcc.getBalance()) : "N/A";
+
+            screenMessage.setText(
+                    "Success! Deposited " + String.format("%.0f", amount) + " TK. New Balance: " + balanceStr + " TK");
+            resetSession(); // Return to Welcome after delay or immediately? ResetSession clears mode to
+                            // WELCOME
+            // Maybe we want to wait a bit? For now immediate reset (user sees msg on
+            // Welcome screen for a moment if we don't clear msg)
+            // resetSession updates options but keeps message? No, updateOptions clears
+            // message?
+            // updateOptions does NOT clear message.
+        } catch (NumberFormatException e) {
+            screenMessage.setText("Invalid amount. Numbers only.");
+        } catch (IllegalArgumentException e) {
+            screenMessage.setText(e.getMessage());
+        } catch (Exception e) {
+            screenMessage.setText("Error: " + e.getMessage());
+        }
+    }
+
     private void handleOption(String optionCode) {
         switch (currentMode) {
             case WELCOME:
@@ -478,6 +569,9 @@ public class AtmController {
             case FP_CONFIRM_PIN:
             case DISABLE_ENTER_CARD:
             case DISABLE_ENTER_NID:
+            case DEPOSIT_NO_CARD_ACCOUNT:
+            case DEPOSIT_NO_CARD_NID:
+            case DEPOSIT_NO_CARD_AMOUNT:
                 // We'll allow "Exit" or "Cancel" if mapped
                 if (optionCode.equals("R4")) { // Assume R4 is Exit/Cancel roughly
                     // If in txn mode, go back to logged in? Or Eject?
@@ -521,6 +615,9 @@ public class AtmController {
                 break;
             case "L3": // Lost/Disable
                 enterDisableCardMode();
+                break;
+            case "L4": // Cardless Deposit
+                enterCardlessDepositMode();
                 break;
             default:
                 screenMessage.setText("Please insert card to continue.");
@@ -605,6 +702,12 @@ public class AtmController {
         updateOptions();
     }
 
+    private void enterCardlessDepositMode() {
+        currentMode = AtmMode.DEPOSIT_NO_CARD_ACCOUNT;
+        screenMessage.setText("Enter Account Number for Deposit:");
+        updateOptions();
+    }
+
     private void updateOptions() {
         if (optionLeft1 == null)
             return;
@@ -623,6 +726,7 @@ public class AtmController {
             optionLeft1.setText("Create Account");
             optionLeft2.setText("Insert Card");
             optionLeft3.setText("Card Lost?");
+            optionLeft4.setText("Deposit (Account Number)");
             optionRight1.setText("Forgot PIN");
             optionRight2.setText("Exit");
         } else if (currentMode == AtmMode.LOGGED_IN) {
@@ -636,7 +740,9 @@ public class AtmController {
                 currentMode == AtmMode.FP_ENTER_CARD || currentMode == AtmMode.FP_ENTER_NID ||
                 currentMode == AtmMode.FP_NEW_PIN || currentMode == AtmMode.FP_CONFIRM_PIN ||
                 currentMode == AtmMode.CHANGE_PIN_INPUT || currentMode == AtmMode.CHANGE_PIN_CONFIRM ||
-                currentMode == AtmMode.DISABLE_ENTER_CARD || currentMode == AtmMode.DISABLE_ENTER_NID) {
+                currentMode == AtmMode.DISABLE_ENTER_CARD || currentMode == AtmMode.DISABLE_ENTER_NID ||
+                currentMode == AtmMode.DEPOSIT_NO_CARD_ACCOUNT || currentMode == AtmMode.DEPOSIT_NO_CARD_NID
+                || currentMode == AtmMode.DEPOSIT_NO_CARD_AMOUNT) {
             optionRight4.setText("Cancel");
         }
     }
