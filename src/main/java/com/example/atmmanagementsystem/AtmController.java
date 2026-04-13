@@ -1,7 +1,10 @@
 package com.example.atmmanagementsystem;
 
+import com.example.atmmanagementsystem.api.SessionManager;
+import com.example.atmmanagementsystem.api.dto.LoginResponse;
 import com.example.atmmanagementsystem.model.Account;
 import com.example.atmmanagementsystem.service.AccountService;
+import com.example.atmmanagementsystem.service.ApiAccountService;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
@@ -54,9 +57,12 @@ public class AtmController {
     private AtmMode currentMode = AtmMode.WELCOME;
     private String currentCardNumber;
     private String tempNewPin;
+    private String tempNidProof; // Store NID proof for reset/block operations
+    private String cardlessDepositAccountNumber; // Store account number for cardless deposit
+    private String cardlessDepositNidProof; // Store NID proof for cardless deposit
     private int failedAttempts = 0;
 
-    private final AccountService service = AccountService.getInstance();
+    private final ApiAccountService apiService = (ApiAccountService) AccountService.getInstance();
 
     @FXML
     public void initialize() {
@@ -82,42 +88,64 @@ public class AtmController {
 
     @FXML
     private void onOk() {
+        System.out.println("=== onOk() CALLED ===");
         String input = screenInput.getText();
+        System.out.println("Current Mode: " + currentMode);
+        System.out.println("Input: " + input);
 
         if (currentMode == AtmMode.CARD_INPUT) {
+            System.out.println("Routing to handleCardInput");
             handleCardInput(input);
         } else if (currentMode == AtmMode.PIN_INPUT) {
+            System.out.println("Routing to handlePinInput");
             handlePinInput(input);
         } else if (currentMode == AtmMode.DEPOSIT_INPUT) {
+            System.out.println("Routing to handleDepositInput");
             handleDepositInput(input);
         } else if (currentMode == AtmMode.WITHDRAW_INPUT) {
+            System.out.println("Routing to handleWithdrawInput");
             handleWithdrawInput(input);
         } else if (currentMode == AtmMode.FP_ENTER_CARD) {
+            System.out.println("Routing to handleForgotPinCardInput");
             handleForgotPinCardInput(input);
         } else if (currentMode == AtmMode.FP_ENTER_CARD) {
+            System.out.println("Routing to handleForgotPinCardInput");
             handleForgotPinCardInput(input);
         } else if (currentMode == AtmMode.FP_ENTER_NID) {
+            System.out.println("Routing to handleForgotPinNidInput");
             handleForgotPinNidInput(input);
         } else if (currentMode == AtmMode.FP_NEW_PIN) {
+            System.out.println("Routing to handleForgotPinNewPinInput");
             handleForgotPinNewPinInput(input);
         } else if (currentMode == AtmMode.FP_CONFIRM_PIN) {
+            System.out.println("Routing to handleForgotPinConfirmInput");
             handleForgotPinConfirmInput(input);
         } else if (currentMode == AtmMode.CHANGE_PIN_INPUT) {
+            System.out.println("Routing to handleChangePinNewInput");
             handleChangePinNewInput(input);
         } else if (currentMode == AtmMode.CHANGE_PIN_CONFIRM) {
+            System.out.println("Routing to handleChangePinConfirmInput");
             handleChangePinConfirmInput(input);
         } else if (currentMode == AtmMode.DISABLE_ENTER_CARD) {
+            System.out.println("Routing to handleDisableEnterCard");
             handleDisableEnterCard(input);
         } else if (currentMode == AtmMode.DISABLE_ENTER_NID) {
+            System.out.println("Routing to handleDisableEnterNid");
             handleDisableEnterNid(input);
         } else if (currentMode == AtmMode.DEPOSIT_NO_CARD_ACCOUNT) {
+            System.out.println("Routing to handleCardlessDepositAccountInput");
             handleCardlessDepositAccountInput(input);
         } else if (currentMode == AtmMode.DEPOSIT_NO_CARD_NID) {
+            System.out.println("Routing to handleCardlessDepositNidInput");
             handleCardlessDepositNidInput(input);
         } else if (currentMode == AtmMode.DEPOSIT_NO_CARD_AMOUNT) {
+            System.out.println("Routing to handleCardlessDepositAmountInput");
             handleCardlessDepositAmountInput(input);
         } else if (currentMode == AtmMode.WELCOME) {
+            System.out.println("Routing to WELCOME handler");
             screenMessage.setText("Please select an option.");
+        } else {
+            System.out.println("WARNING: No handler for mode: " + currentMode);
         }
         screenInput.clear();
     }
@@ -128,20 +156,8 @@ public class AtmController {
             return;
         }
 
-        Account acc = service.findByCardNumber(inputCard).orElse(null);
-        if (acc == null) {
-            screenMessage.setText("Card not found. Please try again.");
-            return;
-        }
-
-        if (acc.isBlocked()) {
-            screenMessage.setText("This card is BLOCKED. Please contact bank.");
-            currentMode = AtmMode.WELCOME;
-            updateOptions();
-            return;
-        }
-
-        // Valid card
+        // Just validate format and store - actual validation happens during login
+        // The login endpoint will validate both card and PIN together
         currentCardNumber = inputCard;
         currentMode = AtmMode.PIN_INPUT;
         failedAttempts = 0; // Reset attempts for new user
@@ -155,42 +171,71 @@ public class AtmController {
             return;
         }
 
-        Account acc = service.findByCardNumber(currentCardNumber).orElse(null);
-        // Should exist as we checked in CARD_INPUT, unless deleted concurrently
-        if (acc == null) {
-            resetSession();
-            screenMessage.setText("System Error: Card not found.");
-            return;
-        }
+        try {
+            // Use API login instead of checking hashed PIN directly
+            LoginResponse loginResponse = apiService.login(currentCardNumber, inputPin);
 
-        String hashedInputPin = com.example.atmmanagementsystem.util.SecurityUtil.hashPin(inputPin);
-        if (acc.getPin().equals(hashedInputPin)) {
-            // Success
-            currentMode = AtmMode.LOGGED_IN;
-            failedAttempts = 0;
-            screenMessage.setText("Welcome Back, " + acc.getName());
-            updateOptions();
-        } else {
-            // Fail
+            if (loginResponse.isSuccess() && loginResponse.getToken() != null) {
+                // Success - token and user info are already stored in SessionManager by ApiService
+                currentMode = AtmMode.LOGGED_IN;
+                failedAttempts = 0;
+
+                // Get username from session
+                String userName = SessionManager.getInstance().getName();
+                if (userName == null || userName.isEmpty()) {
+                    userName = "User";
+                }
+                screenMessage.setText("Welcome, " + userName);
+                updateOptions();
+            } else {
+                // Login failed - show error message from API
+                String errorMsg = loginResponse.getMessage();
+                if (errorMsg == null || errorMsg.isEmpty()) {
+                    errorMsg = "Login failed";
+                }
+
+                failedAttempts++;
+                if (failedAttempts >= 3) {
+                    // Backend automatically blocks account after 3 failed attempts
+                    screenMessage.setText("Wrong PIN 3 times. CARD BLOCKED. Contact bank.");
+                    resetSession();
+                } else {
+                    screenMessage.setText(errorMsg + " (Attempt " + failedAttempts + "/3)");
+                }
+            }
+        } catch (Exception e) {
+            // Show the actual error message from the API
+            String errorMsg = e.getMessage();
+            if (errorMsg == null || errorMsg.isEmpty()) {
+                errorMsg = "Login failed. Please try again.";
+            }
+
             failedAttempts++;
             if (failedAttempts >= 3) {
-                service.blockAccount(currentCardNumber);
-                screenMessage.setText("Wrong PIN 3 times. CARD BLOCKED.");
+                // Backend automatically blocks account after 3 failed attempts
+                screenMessage.setText("Wrong PIN 3 times. CARD BLOCKED. Contact bank.");
                 resetSession();
             } else {
-                screenMessage.setText("Incorrect PIN. Attempt " + failedAttempts + "/3");
+                screenMessage.setText(errorMsg + " (Attempt " + failedAttempts + "/3)");
             }
         }
     }
 
     private void handleDepositInput(String input) {
         try {
+            System.out.println("=== DEPOSIT START ===");
+            System.out.println("Current Card Number: " + currentCardNumber);
+            System.out.println("Session: " + SessionManager.getInstance());
+            System.out.println("Amount: " + input);
+            
             double amount = Double.parseDouble(input);
-            service.deposit(currentCardNumber, amount);
+            apiService.deposit(currentCardNumber, amount);
+            
+            // Refresh balance from API (reads from database)
+            ((ApiAccountService) apiService).refreshSessionBalance(currentCardNumber);
 
-            Account updatedAcc = service.findByCardNumber(currentCardNumber).orElse(null);
-            String balanceStr = (updatedAcc != null) ? String.format("%.2f", updatedAcc.getBalance()) : "N/A";
-
+            String balanceStr = String.format("%.2f", SessionManager.getInstance().getBalance());
+            System.out.println("Deposit successful. New balance from API: " + balanceStr);
             screenMessage.setText("Deposited " + String.format("%.0f", amount) + " TK. Balance: " + balanceStr + " TK");
             currentMode = AtmMode.LOGGED_IN;
             updateOptions();
@@ -198,19 +243,29 @@ public class AtmController {
             screenMessage.setText("Invalid amount. Enter numbers only.");
         } catch (IllegalArgumentException e) {
             screenMessage.setText(e.getMessage());
+            System.err.println("Deposit error: " + e.getMessage());
         } catch (Exception e) {
-            screenMessage.setText("Error: " + e.getMessage());
+            screenMessage.setText("Deposit Error: " + e.getMessage());
+            System.err.println("Deposit exception:");
+            e.printStackTrace();
         }
     }
 
     private void handleWithdrawInput(String input) {
         try {
+            System.out.println("=== WITHDRAW START ===");
+            System.out.println("Current Card Number: " + currentCardNumber);
+            System.out.println("Session: " + SessionManager.getInstance());
+            System.out.println("Amount: " + input);
+            
             double amount = Double.parseDouble(input);
-            service.withdraw(currentCardNumber, amount);
+            apiService.withdraw(currentCardNumber, amount);
+            
+            // Refresh balance from API (reads from database)
+            ((ApiAccountService) apiService).refreshSessionBalance(currentCardNumber);
 
-            Account updatedAcc = service.findByCardNumber(currentCardNumber).orElse(null);
-            String balanceStr = (updatedAcc != null) ? String.format("%.2f", updatedAcc.getBalance()) : "N/A";
-
+            String balanceStr = String.format("%.2f", SessionManager.getInstance().getBalance());
+            System.out.println("Withdraw successful. New balance from API: " + balanceStr);
             screenMessage.setText("Withdrawn " + String.format("%.0f", amount) + " TK. Balance: " + balanceStr + " TK");
             currentMode = AtmMode.LOGGED_IN;
             updateOptions();
@@ -218,8 +273,11 @@ public class AtmController {
             screenMessage.setText("Invalid amount. Enter numbers only.");
         } catch (IllegalArgumentException e) {
             screenMessage.setText(e.getMessage());
+            System.err.println("Withdraw error: " + e.getMessage());
         } catch (Exception e) {
-            screenMessage.setText("Error: " + e.getMessage());
+            screenMessage.setText("Withdraw Error: " + e.getMessage());
+            System.err.println("Withdraw exception:");
+            e.printStackTrace();
         }
     }
 
@@ -229,7 +287,7 @@ public class AtmController {
             return;
         }
         // Valid length, check existence
-        Account acc = service.findByCardNumber(inputCard).orElse(null);
+        Account acc = apiService.findByCardNumber(inputCard).orElse(null);
         if (acc == null) {
             screenMessage.setText("Card not found. Please try again.");
             return;
@@ -255,7 +313,7 @@ public class AtmController {
             return;
         }
 
-        Account acc = service.findByCardNumber(currentCardNumber).orElse(null);
+        Account acc = apiService.findByCardNumber(currentCardNumber).orElse(null);
         if (acc == null) {
             resetSession();
             screenMessage.setText("System Error: Card not found.");
@@ -270,7 +328,8 @@ public class AtmController {
 
         String last4 = fullNid.substring(fullNid.length() - 4);
         if (input.equals(last4)) {
-            // Success match
+            // Success match - store NID for later use
+            tempNidProof = input;
             currentMode = AtmMode.FP_NEW_PIN;
             screenMessage.setText("Verified! Enter New PIN (4 digits):");
             updateOptions();
@@ -301,30 +360,12 @@ public class AtmController {
         }
 
         try {
-            // Update PIN directly (check against old PIN not strictly required here as they
-            // forgot it,
-            // but updatePin might enforce it if using the same service method.
-            // The service method throws if newPin == oldPin.
-            // If user enters SAME pin as forgot pin, it will error. This is acceptable?
-            // Yes, "New PIN cannot be same as old PIN" is a valid security rule even if
-            // forgot.
-            service.updatePin(currentCardNumber, confirmPin);
-
-            // Unblock if blocked
-            // Note: updatePin does NOT unblock automatically in our previous implementation
-            // of updatePin
-            // But resetPin DID. We probably should unblock here.
-            // Let's create a new service method or add unblock logic?
-            // OR just call resetPin logic but providing the new PIN?
-            // Actually, updatePin in DatabaseAccountService does: "UPDATE accounts SET pin
-            // = ? ..."
-            // It does NOT unblock.
-            // We need to unblock.
-            service.unblockAccount(currentCardNumber); // We need to add this method or direct DB call?
-            // Or update updatePin to unblock?
-            // Let's rely on updatePin for now, and realized we need to unblock.
+            // Use resetPin which doesn't require auth and uses NID verification
+            apiService.resetPin(currentCardNumber, tempNidProof);
 
             screenMessage.setText("PIN Reset Success! Please Login.");
+            tempNewPin = null;
+            tempNidProof = null;
             resetSession();
         } catch (IllegalArgumentException e) {
             screenMessage.setText(e.getMessage());
@@ -359,7 +400,7 @@ public class AtmController {
         }
 
         try {
-            service.updatePin(currentCardNumber, confirmPin);
+            apiService.updatePin(currentCardNumber, confirmPin);
             screenMessage.setText("PIN Changed Successfully.");
             currentMode = AtmMode.LOGGED_IN;
             tempNewPin = null;
@@ -420,7 +461,7 @@ public class AtmController {
             screenMessage.setText("Invalid Card Number. Try again.");
             return;
         }
-        Account acc = service.findByCardNumber(inputCard).orElse(null);
+        Account acc = apiService.findByCardNumber(inputCard).orElse(null);
         if (acc == null) {
             screenMessage.setText("Card not found. Please try again.");
             return;
@@ -443,7 +484,7 @@ public class AtmController {
             screenMessage.setText("Enter exactly 4 digits of NID.");
             return;
         }
-        Account acc = service.findByCardNumber(currentCardNumber).orElse(null);
+        Account acc = apiService.findByCardNumber(currentCardNumber).orElse(null);
         if (acc == null) {
             resetSession(); // Should not happen usually
             return;
@@ -459,7 +500,7 @@ public class AtmController {
         if (input.equals(last4)) {
             // Match - Block Card
             try {
-                service.blockAccount(currentCardNumber);
+                apiService.blockAccount(currentCardNumber, input);
                 screenMessage.setText("Card Successfully BLOCKED. Please contact bank.");
                 resetSession();
             } catch (Exception e) {
@@ -471,31 +512,14 @@ public class AtmController {
     }
 
     private void handleCardlessDepositAccountInput(String accountNum) {
-        if (accountNum == null || accountNum.length() < 5) {
-            screenMessage.setText("Invalid Account Number.");
+        if (accountNum == null || accountNum.length() != 12) {
+            screenMessage.setText("Invalid Account Number. Must be 12 digits.");
             return;
         }
-        Account acc = service.findByAccountNumber(accountNum).orElse(null);
-        if (acc == null) {
-            screenMessage.setText("Account not found. Try again.");
-            return;
-        }
-        if (acc.isBlocked()) {
-            screenMessage.setText("Account is BLOCKED. Cannot Deposit.");
-            resetSession();
-            return;
-        }
-
-        currentCardNumber = acc.getCardNumber(); // Store for the transaction
+        // Store account number and proceed to NID verification
+        cardlessDepositAccountNumber = accountNum;
         currentMode = AtmMode.DEPOSIT_NO_CARD_NID;
-
-        String nid = acc.getNid();
-        String maskedNid = "****";
-        if (nid != null && nid.length() > 4) {
-            maskedNid = nid.substring(0, nid.length() - 4) + "****";
-        }
-
-        screenMessage.setText("Enter match NID digits " + maskedNid + ":");
+        screenMessage.setText("Enter Last 4 Digits of NID:");
         updateOptions();
     }
 
@@ -504,53 +528,83 @@ public class AtmController {
             screenMessage.setText("Enter exactly 4 digits.");
             return;
         }
-        Account acc = service.findByCardNumber(currentCardNumber).orElse(null);
-        // Safety check
-        if (acc == null) {
-            resetSession();
-            return;
-        }
-
-        String fullNid = acc.getNid();
-        if (fullNid == null || fullNid.length() < 4) {
-            screenMessage.setText("NID data invalid.");
-            return;
-        }
-        String last4 = fullNid.substring(fullNid.length() - 4);
-
-        if (input.equals(last4)) {
-            // Success
-            currentMode = AtmMode.DEPOSIT_NO_CARD_AMOUNT;
-            screenMessage.setText("Verified! Enter Amount to Deposit:");
-            updateOptions();
-        } else {
-            screenMessage.setText("Incorrect Digits. Try again.");
+        
+        try {
+            System.out.println("=== VERIFYING NID ===");
+            System.out.println("Account Number: " + cardlessDepositAccountNumber);
+            System.out.println("NID Proof: " + input);
+            
+            // Call verify NID API
+            boolean verified = apiService.verifyNid(cardlessDepositAccountNumber, input);
+            
+            if (verified) {
+                System.out.println("NID verification successful");
+                // Store NID proof and proceed to amount entry
+                cardlessDepositNidProof = input;
+                currentMode = AtmMode.DEPOSIT_NO_CARD_AMOUNT;
+                screenMessage.setText("NID Verified! Enter Amount to Deposit (Multiple of 500):");
+                updateOptions();
+            } else {
+                screenMessage.setText("NID verification failed. Please try again.");
+            }
+        } catch (Exception e) {
+            System.err.println("NID verification error: " + e.getMessage());
+            screenMessage.setText("NID Error: " + e.getMessage());
         }
     }
 
     private void handleCardlessDepositAmountInput(String input) {
+        System.out.println("=== handleCardlessDepositAmountInput CALLED ===");
+        System.out.println("Input: " + input);
+        System.out.println("Account Number: " + cardlessDepositAccountNumber);
+        System.out.println("NID Proof: " + cardlessDepositNidProof);
+        
         try {
             double amount = Double.parseDouble(input);
-            service.deposit(currentCardNumber, amount);
-
-            Account updatedAcc = service.findByCardNumber(currentCardNumber).orElse(null);
-            String balanceStr = (updatedAcc != null) ? String.format("%.2f", updatedAcc.getBalance()) : "N/A";
-
-            screenMessage.setText(
-                    "Success! Deposited " + String.format("%.0f", amount) + " TK. New Balance: " + balanceStr + " TK");
-            resetSession(); // Return to Welcome after delay or immediately? ResetSession clears mode to
-                            // WELCOME
-            // Maybe we want to wait a bit? For now immediate reset (user sees msg on
-            // Welcome screen for a moment if we don't clear msg)
-            // resetSession updates options but keeps message? No, updateOptions clears
-            // message?
-            // updateOptions does NOT clear message.
+            
+            System.out.println("=== CARDLESS DEPOSIT ===");
+            System.out.println("Account Number: " + cardlessDepositAccountNumber);
+            System.out.println("NID Proof: " + cardlessDepositNidProof);
+            System.out.println("Amount: " + amount);
+            
+            if (cardlessDepositAccountNumber == null || cardlessDepositAccountNumber.isEmpty()) {
+                screenMessage.setText("Error: Account number not found. Please start over.");
+                resetSession();
+                return;
+            }
+            
+            if (cardlessDepositNidProof == null || cardlessDepositNidProof.isEmpty()) {
+                screenMessage.setText("Error: NID verification failed. Please start over.");
+                resetSession();
+                return;
+            }
+            
+            // Send cardless deposit request with all 3 pieces of data
+            apiService.cardlessDeposit(cardlessDepositAccountNumber, cardlessDepositNidProof, amount);
+            
+            System.out.println("Cardless deposit successful");
+            
+            // Clear cardless deposit data
+            cardlessDepositAccountNumber = null;
+            cardlessDepositNidProof = null;
+            
+            // Store message before reset
+            String successMsg = "Success! Deposited " + String.format("%.0f", amount) + " TK.";
+            
+            resetSession();
+            
+            // Set message after reset so it's visible
+            screenMessage.setText(successMsg);
         } catch (NumberFormatException e) {
-            screenMessage.setText("Invalid amount. Numbers only.");
+            screenMessage.setText("Invalid amount. Enter numbers only.");
+            System.err.println("Cardless deposit amount parse error: " + e.getMessage());
         } catch (IllegalArgumentException e) {
             screenMessage.setText(e.getMessage());
+            System.err.println("Cardless deposit validation error: " + e.getMessage());
         } catch (Exception e) {
-            screenMessage.setText("Error: " + e.getMessage());
+            screenMessage.setText("Cardless Deposit Error: " + e.getMessage());
+            System.err.println("Cardless deposit exception:");
+            e.printStackTrace();
         }
     }
 
@@ -631,14 +685,10 @@ public class AtmController {
                 screenMessage.setText("Enter Amount (Multiple of 500):");
                 updateOptions();
                 break;
-            case "L2":
-                Account acc = service.findByCardNumber(currentCardNumber).orElse(null);
-                if (acc != null) {
-                    screenMessage
-                            .setText("Your Current Balance is: " + String.format("%.2f", acc.getBalance()) + " TK");
-                } else {
-                    screenMessage.setText("Error retrieving balance.");
-                }
+            case "L2": // Check Balance
+                // Use session balance
+                double balance = SessionManager.getInstance().getBalance();
+                screenMessage.setText("Your Current Balance is: " + String.format("%.2f", balance) + " TK");
                 break;
             case "R1": // Deposit
                 currentMode = AtmMode.DEPOSIT_INPUT;
@@ -654,7 +704,7 @@ public class AtmController {
                 screenMessage.setText("Enter New PIN (4 digits):");
                 updateOptions();
                 break;
-            case "L4": // Mini Statement
+            case "R3": // Mini Statement
                 loadMiniStatement();
                 break;
         }
@@ -676,6 +726,10 @@ public class AtmController {
 
     private void loadMiniStatement() {
         try {
+            System.out.println("=== Loading Mini Statement ===");
+            System.out.println("Current Card Number: " + currentCardNumber);
+            System.out.println("Session: " + SessionManager.getInstance());
+            
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
                     getClass().getResource("mini-statement.fxml"));
             javafx.scene.Parent root = loader.load();
@@ -683,8 +737,9 @@ public class AtmController {
             controller.setCardNumber(currentCardNumber);
             screenMessage.getScene().setRoot(root);
         } catch (Exception e) {
+            System.err.println("Error loading Mini Statement screen: " + e.getMessage());
             e.printStackTrace();
-            screenMessage.setText("Error loading Mini Statement screen.");
+            screenMessage.setText("Error loading Mini Statement: " + e.getMessage());
         }
     }
 
@@ -703,8 +758,16 @@ public class AtmController {
 
     private void resetSession() {
         currentCardNumber = null;
+        tempNewPin = null;
+        tempNidProof = null;
+        cardlessDepositAccountNumber = null;
+        cardlessDepositNidProof = null;
         failedAttempts = 0;
         currentMode = AtmMode.WELCOME;
+        
+        // Clear session data
+        SessionManager.getInstance().clearSession();
+        
         updateOptions();
     }
 
@@ -719,7 +782,7 @@ public class AtmController {
         this.failedAttempts = 0;
 
         // Fetch account to greet properly (optional, or just generic welcome back)
-        Account acc = service.findByCardNumber(cardNumber).orElse(null);
+        Account acc = apiService.findByCardNumber(cardNumber).orElse(null);
         if (acc != null) {
             screenMessage.setText("Welcome Back, " + acc.getName());
         } else {
@@ -767,7 +830,7 @@ public class AtmController {
             optionLeft2.setText("Check Balance");
             optionRight2.setText("Eject Card");
             optionLeft3.setText("Change PIN");
-            optionLeft4.setText("Mini Statement");
+            optionRight3.setText("Mini Statement");
         } else if (currentMode == AtmMode.CARD_INPUT || currentMode == AtmMode.PIN_INPUT ||
                 currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT ||
                 currentMode == AtmMode.FP_ENTER_CARD || currentMode == AtmMode.FP_ENTER_NID ||

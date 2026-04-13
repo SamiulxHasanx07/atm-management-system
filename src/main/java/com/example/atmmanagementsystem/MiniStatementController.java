@@ -2,20 +2,22 @@ package com.example.atmmanagementsystem;
 
 import com.example.atmmanagementsystem.model.Transaction;
 import com.example.atmmanagementsystem.service.AccountService;
+import com.example.atmmanagementsystem.service.ApiAccountService;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -27,6 +29,9 @@ public class MiniStatementController {
 
     @FXML
     private ComboBox<String> dateFilter;
+
+    @FXML
+    private Label transactionCountLabel;
 
     @FXML
     private TableView<Transaction> trxTable;
@@ -41,7 +46,7 @@ public class MiniStatementController {
     private TableColumn<Transaction, String> colDate;
 
     private String currentCardNumber;
-    private final AccountService service = AccountService.getInstance();
+    private final ApiAccountService apiService = (ApiAccountService) AccountService.getInstance();
     private ObservableList<Transaction> masterData = FXCollections.observableArrayList();
 
     @FXML
@@ -71,47 +76,100 @@ public class MiniStatementController {
     }
 
     private void loadData() {
-        if (currentCardNumber == null)
+        loadData(null, null, null, null);
+    }
+
+    /**
+     * Load transactions with optional filters
+     */
+    private void loadData(String type, String dateFrom, String dateTo, Integer limit) {
+        if (currentCardNumber == null) {
+            System.err.println("No card number set, cannot load transactions");
+            if (transactionCountLabel != null) {
+                transactionCountLabel.setText("Error: No card number");
+            }
             return;
-        List<Transaction> list = service.getTransactions(currentCardNumber);
-        masterData.setAll(list);
-        applyFilters();
+        }
+
+        System.out.println("=== Loading transactions for card: " + currentCardNumber + " ===");
+        System.out.println("Filters - Type: " + type + ", DateFrom: " + dateFrom + 
+                          ", DateTo: " + dateTo + ", Limit: " + limit);
+        
+        try {
+            System.out.println("Calling API service...");
+            List<Transaction> list = apiService.getTransactions(currentCardNumber, type, dateFrom, dateTo, limit);
+            System.out.println("API returned " + list.size() + " transactions");
+            
+            if (list.isEmpty()) {
+                System.out.println("WARNING: No transactions found for this card");
+                if (transactionCountLabel != null) {
+                    transactionCountLabel.setText("No transactions found");
+                }
+            } else {
+                System.out.println("First transaction: " + list.get(0));
+                if (transactionCountLabel != null) {
+                    transactionCountLabel.setText("Transactions: " + list.size());
+                }
+            }
+            
+            masterData.clear();
+            masterData.setAll(list);
+            System.out.println("MasterData size: " + masterData.size());
+            trxTable.setItems(masterData);
+            System.out.println("Table items count: " + trxTable.getItems().size());
+            System.out.println("Table visible: " + trxTable.isVisible());
+            System.out.println("Table columns: " + trxTable.getColumns().size());
+        } catch (Exception e) {
+            System.err.println("Failed to load transactions: " + e.getMessage());
+            if (transactionCountLabel != null) {
+                transactionCountLabel.setText("Error: " + e.getMessage());
+            }
+            e.printStackTrace();
+        }
     }
 
     @FXML
     private void onFilterApply() {
-        applyFilters();
-    }
-
-    private void applyFilters() {
         String typeParams = typeFilter.getValue();
         String dateParams = dateFilter.getValue();
 
-        FilteredList<Transaction> filtered = new FilteredList<>(masterData, t -> {
-            // Type Filter
-            if (!"All".equals(typeParams)) {
-                if (!t.getType().equalsIgnoreCase(typeParams))
-                    return false;
-            }
+        // Convert UI filter values to API parameters
+        String type = null;
+        if (!"All".equals(typeParams)) {
+            type = typeParams; // "DEPOSIT" or "WITHDRAW"
+        }
 
-            // Date Filter
-            if (!"All Time".equals(dateParams) && t.getTimestamp() != null) {
-                LocalDateTime txTime = t.getTimestamp().toLocalDateTime();
-                LocalDateTime now = LocalDateTime.now();
+        String dateFrom = null;
+        String dateTo = null;
+        Integer limit = null;
 
-                if ("Last Day".equals(dateParams)) {
-                    if (txTime.isBefore(now.minusDays(1)))
-                        return false;
-                } else if ("Last Month".equals(dateParams)) {
-                    if (txTime.isBefore(now.minusMonths(1)))
-                        return false;
-                }
-            }
+        LocalDate today = LocalDate.now();
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE;
 
-            return true;
-        });
+        if ("Last Day".equals(dateParams)) {
+            // Last 24 hours: from yesterday at 00:00:00 to today at 23:59:59
+            LocalDate yesterday = today.minusDays(1);
+            dateFrom = yesterday.format(dateFormatter);
+            dateTo = today.format(dateFormatter);
+            System.out.println("Date filter: Last Day");
+            System.out.println("  dateFrom: " + dateFrom + " (yesterday 00:00:00)");
+            System.out.println("  dateTo: " + dateTo + " (today 23:59:59)");
+        } else if ("Last Month".equals(dateParams)) {
+            // Last 30 days: from 30 days ago to today
+            LocalDate thirtyDaysAgo = today.minusDays(30);
+            dateFrom = thirtyDaysAgo.format(dateFormatter);
+            dateTo = today.format(dateFormatter);
+            System.out.println("Date filter: Last Month (30 days)");
+            System.out.println("  dateFrom: " + dateFrom + " (30 days ago 00:00:00)");
+            System.out.println("  dateTo: " + dateTo + " (today 23:59:59)");
+        } else {
+            System.out.println("Date filter: All Time (no date restriction)");
+        }
+        
+        System.out.println("Type filter: " + (type != null ? type : "All"));
 
-        trxTable.setItems(filtered);
+        // Reload data from API with filters
+        loadData(type, dateFrom, dateTo, limit);
     }
 
     @FXML

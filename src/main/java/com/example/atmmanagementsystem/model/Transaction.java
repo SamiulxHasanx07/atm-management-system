@@ -9,6 +9,10 @@ public class Transaction {
     private String type; // DEPOSIT, WITHDRAW
     private Timestamp timestamp;
 
+    // No-arg constructor for API deserialization
+    public Transaction() {
+    }
+
     public Transaction(int id, String cardNumber, double amount, String type, Timestamp timestamp) {
         this.id = id;
         this.cardNumber = cardNumber;

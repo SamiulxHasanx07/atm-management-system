@@ -24,14 +24,18 @@
             
             <Label text="Mini Statement" styleClass="atm-title" style="-fx-font-size: 24px;" />
             
+            <!-- Transaction Count Label -->
+            <Label fx:id="transactionCountLabel" text="Transactions: 0" styleClass="screen-text" 
+                   style="-fx-text-fill: #00FF00; -fx-font-size: 14px; -fx-font-weight: bold;" />
+
             <!-- Filters -->
             <HBox spacing="10" alignment="CENTER_LEFT">
                  <Label text="Type:" styleClass="screen-text" style="-fx-text-fill: white;" />
                  <ComboBox fx:id="typeFilter" prefWidth="120" />
-                 
+
                  <Label text="Period:" styleClass="screen-text" style="-fx-text-fill: white;" />
                  <ComboBox fx:id="dateFilter" prefWidth="150" />
-                 
+
                  <Button text="Apply" onAction="#onFilterApply" styleClass="action-btn" />
             </HBox>
 

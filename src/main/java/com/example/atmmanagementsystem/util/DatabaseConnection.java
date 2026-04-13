@@ -4,6 +4,12 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+/**
+ * @deprecated This class is no longer used. The application now uses the 
+ * backend REST API instead of direct database connections.
+ * Kept for backward compatibility if needed.
+ */
+@Deprecated
 public class DatabaseConnection {
     private static final String URL = "jdbc:mysql://localhost:3306/bangla_bank";
     private static final String USER = "root";

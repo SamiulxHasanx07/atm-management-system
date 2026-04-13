@@ -192,7 +192,21 @@ public class DatabaseAccountService implements AccountService {
     }
 
     @Override
-    public void blockAccount(String cardNumber) {
+    public void blockAccount(String cardNumber, String nidProof) {
+        // Verify NID proof matches
+        Account acc = findByCardNumber(cardNumber).orElseThrow(() -> new IllegalArgumentException("Card not found"));
+        
+        boolean valid = false;
+        if (nidProof.equals(acc.getNid())) {
+            valid = true;
+        } else if (acc.getPhoneNumber() != null && acc.getPhoneNumber().endsWith(nidProof)) {
+            valid = true;
+        }
+
+        if (!valid) {
+            throw new IllegalArgumentException("NID verification failed");
+        }
+
         String sql = "UPDATE accounts SET blocked = TRUE WHERE card_number = ?";
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -395,21 +409,14 @@ public class DatabaseAccountService implements AccountService {
     }
 
     @Override
-    public String resetPin(String cardNumber, String identityProof) {
+    public String resetPin(String cardNumber, String nidProof) {
         Account acc = findByCardNumber(cardNumber).orElseThrow(() -> new IllegalArgumentException("Card not found"));
 
         // Check identity (Phone or NID)
-        boolean matchPhone = acc.getPhoneNumber() != null && acc.getPhoneNumber().endsWith(identityProof);
-        // Note: Using endsWith for phone to be lenient if format differs, or exact
-        // match?
-        // User said "provide phone or nid". Let's try exact match on NID, and match on
-        // digits for phone.
-        // Actually, let's keep it simple: Exact match on (Phone OR NID).
-
         boolean valid = false;
-        if (identityProof.equals(acc.getNid())) {
+        if (nidProof.equals(acc.getNid())) {
             valid = true;
-        } else if (acc.getPhoneNumber() != null && acc.getPhoneNumber().equals(identityProof)) {
+        } else if (acc.getPhoneNumber() != null && acc.getPhoneNumber().equals(nidProof)) {
             valid = true;
         }
 

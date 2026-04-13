@@ -2,6 +2,7 @@ package com.example.atmmanagementsystem;
 
 import com.example.atmmanagementsystem.model.Account;
 import com.example.atmmanagementsystem.service.AccountService;
+import com.example.atmmanagementsystem.service.ApiAccountService;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
@@ -55,7 +56,7 @@ public class BanglaBankController {
     @FXML
     private VBox resultContainer;
 
-    private final AccountService service = AccountService.getInstance();
+    private final ApiAccountService apiService = (ApiAccountService) AccountService.getInstance();
 
     @FXML
     public void initialize() {
@@ -140,8 +141,8 @@ public class BanglaBankController {
         }
 
         try {
-            Account acc = service.createAccount(name, phone, deposit, email, gender, profession, nationality, nid,
-                    address);
+            Account acc = apiService.createAccount(name, phone, deposit, email, gender, profession, nationality,
+                    nid, address);
 
             resultTitle.setText("Successfully Created Account");
             resultContainer.setVisible(true);

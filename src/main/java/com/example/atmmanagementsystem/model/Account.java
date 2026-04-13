@@ -20,6 +20,10 @@ public class Account {
     private String nid;
     private String address;
 
+    // No-arg constructor for API deserialization
+    public Account() {
+    }
+
     // constructor: use AccountService to create accounts
     public Account(String name, String phoneNumber, double initialDeposit,
             String email, String gender, String profession, String nationality, String nid, String address) {

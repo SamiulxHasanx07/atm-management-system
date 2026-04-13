@@ -5,6 +5,11 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 import java.sql.SQLException;
 
+/**
+ * @deprecated This class is no longer used. The backend API handles database initialization.
+ * Kept for backward compatibility if needed.
+ */
+@Deprecated
 public class DatabaseInitializer {
 
     private static final String BASE_URL = "jdbc:mysql://localhost:3306/";

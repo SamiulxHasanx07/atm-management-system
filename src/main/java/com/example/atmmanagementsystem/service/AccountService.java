@@ -21,13 +21,13 @@ public interface AccountService {
 
     List<Account> listAccounts();
 
-    void blockAccount(String cardNumber);
+    void blockAccount(String cardNumber, String nidProof);
 
     void deposit(String cardNumber, double amount);
 
     void withdraw(String cardNumber, double amount);
 
-    String resetPin(String cardNumber, String identityProof);
+    String resetPin(String cardNumber, String nidProof);
 
     void updatePin(String cardNumber, String newPin);
 
@@ -35,8 +35,8 @@ public interface AccountService {
 
     List<com.example.atmmanagementsystem.model.Transaction> getTransactions(String cardNumber);
 
-    // Factory method - switching to Database implementation
+    // Factory method - switching to API-based implementation
     static AccountService getInstance() {
-        return new DatabaseAccountService();
+        return new ApiAccountService();
     }
 }
