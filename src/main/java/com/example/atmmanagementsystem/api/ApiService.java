@@ -162,12 +162,20 @@ public class ApiService {
                 throw new Exception(createResponse.getMessage());
             }
         } else {
+            String responseBody = response.body();
+            String errorMessage = "Account creation failed";
             try {
-                ApiResponse<Object> errorResponse = gson.fromJson(response.body(), ApiResponse.class);
-                throw new Exception(errorResponse != null ? errorResponse.getMessage() : "Account creation failed");
+                ApiResponse<Object> errorResponse = gson.fromJson(responseBody, ApiResponse.class);
+                if (errorResponse != null && errorResponse.getMessage() != null) {
+                    errorMessage = errorResponse.getMessage();
+                }
             } catch (Exception e) {
-                throw new Exception("Account creation failed with status: " + response.statusCode());
+                // If parsing fails, use the raw response body if available
+                if (responseBody != null && !responseBody.isEmpty()) {
+                    errorMessage = responseBody;
+                }
             }
+            throw new Exception(errorMessage);
         }
     }
 
