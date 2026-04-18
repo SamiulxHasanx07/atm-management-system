@@ -165,6 +165,22 @@ public class ApiAccountService implements AccountService {
         }
     }
 
+    public void transferToCard(String cardNumber, String recipientCardNumber, double amount) {
+        try {
+            apiService.transferToCard(cardNumber, recipientCardNumber, amount);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    public void transferToAccount(String cardNumber, String recipientAccountNumber, double amount) {
+        try {
+            apiService.transferToAccount(cardNumber, recipientAccountNumber, amount);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
     // Helper method for login (not in AccountService interface but needed for authentication)
     public LoginResponse login(String cardNumber, String pin) {
         try {

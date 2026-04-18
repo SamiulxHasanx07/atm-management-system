@@ -14,6 +14,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -821,6 +822,108 @@ public class ApiService {
             }
         }
         throw new Exception(errorMsg);
+    }
+
+    public void transferToCard(String cardNumber, String recipientCardNumber, double amount) throws Exception {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("recipient_card_number", recipientCardNumber);
+        payload.put("amount", amount);
+
+        executeTransferRequest(
+                cardNumber,
+                "/transactions/" + cardNumber + "/transfer/card",
+                payload,
+                "card transfer"
+        );
+    }
+
+    public void transferToAccount(String cardNumber, String recipientAccountNumber, double amount) throws Exception {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("recipient_account_number", recipientAccountNumber);
+        payload.put("amount", amount);
+
+        executeTransferRequest(
+                cardNumber,
+                "/transactions/" + cardNumber + "/transfer/account",
+                payload,
+                "account transfer"
+        );
+    }
+
+    private void executeTransferRequest(String cardNumber, String endpoint, Map<String, Object> payload,
+                                        String transferType) throws Exception {
+        String token = getAuthToken();
+        String jsonBody = gson.toJson(payload);
+
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(ApiConfig.BASE_URL + endpoint))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .timeout(Duration.ofSeconds(ApiConfig.READ_TIMEOUT_SECONDS))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        int status = response.statusCode();
+
+        if (status == 200 || status == 201) {
+            try {
+                TransactionResponse transactionResponse = gson.fromJson(response.body(), TransactionResponse.class);
+                if (transactionResponse != null && transactionResponse.getData() != null) {
+                    SessionManager.getInstance().setBalance(transactionResponse.getData().getBalance());
+                }
+            } catch (Exception parseEx) {
+                System.err.println("Failed to parse " + transferType + " response: " + parseEx.getMessage());
+            }
+            return;
+        }
+
+        String fallback = "Transfer failed";
+        String parsedMessage = extractApiErrorMessage(response.body(), fallback);
+        throw new Exception("HTTP_" + status + ": " + parsedMessage);
+    }
+
+    private String extractApiErrorMessage(String responseBody, String fallback) {
+        if (responseBody == null || responseBody.isEmpty()) {
+            return fallback;
+        }
+
+        try {
+            ApiResponse<Object> errorResponse = gson.fromJson(responseBody, ApiResponse.class);
+            String message = fallback;
+
+            if (errorResponse != null) {
+                if (errorResponse.getMessage() != null && !errorResponse.getMessage().isEmpty()) {
+                    message = errorResponse.getMessage();
+                } else if (errorResponse.getError() != null && !errorResponse.getError().isEmpty()) {
+                    message = errorResponse.getError();
+                }
+
+                if (errorResponse.getErrors() != null && !errorResponse.getErrors().isEmpty()) {
+                    List<String> fieldErrors = new ArrayList<>();
+                    for (Map<String, String> err : errorResponse.getErrors()) {
+                        if (err == null) {
+                            continue;
+                        }
+                        String field = err.get("field");
+                        String errMsg = err.get("message");
+                        if (field != null && errMsg != null) {
+                            fieldErrors.add(field + ": " + errMsg);
+                        } else if (errMsg != null) {
+                            fieldErrors.add(errMsg);
+                        }
+                    }
+
+                    if (!fieldErrors.isEmpty()) {
+                        message = String.join(" | ", fieldErrors);
+                    }
+                }
+            }
+
+            return message;
+        } catch (Exception parseEx) {
+            return responseBody;
+        }
     }
 
     // ==================== Helper Methods ====================

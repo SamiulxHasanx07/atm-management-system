@@ -18,9 +18,10 @@ import javafx.scene.control.TableView;
 
 import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class MiniStatementController {
 
@@ -63,7 +64,7 @@ public class MiniStatementController {
         });
 
         // Setup Filters
-        typeFilter.getItems().addAll("All", "DEPOSIT", "WITHDRAW");
+        typeFilter.getItems().addAll("All", "DEPOSIT", "WITHDRAW", "SEND MONEY");
         typeFilter.setValue("All");
 
         dateFilter.getItems().addAll("All Time", "Last Day", "Last Month");
@@ -135,7 +136,8 @@ public class MiniStatementController {
 
         // Convert UI filter values to API parameters
         String type = null;
-        if (!"All".equals(typeParams)) {
+        boolean transferFilterSelected = "SEND MONEY".equals(typeParams);
+        if (!"All".equals(typeParams) && !transferFilterSelected) {
             type = typeParams; // "DEPOSIT" or "WITHDRAW"
         }
 
@@ -168,8 +170,36 @@ public class MiniStatementController {
         
         System.out.println("Type filter: " + (type != null ? type : "All"));
 
-        // Reload data from API with filters
-        loadData(type, dateFrom, dateTo, limit);
+        // Reload data from API with filters.
+        // For send-money filter, fetch by date and then match transfer aliases locally
+        // because backends may use different names (e.g., TRANSFER, SEND_MONEY).
+        if (transferFilterSelected) {
+            loadData(null, dateFrom, dateTo, limit);
+            applyLocalTransferFilter();
+        } else {
+            loadData(type, dateFrom, dateTo, limit);
+        }
+    }
+
+    private void applyLocalTransferFilter() {
+        List<Transaction> transferOnly = new ArrayList<>();
+        for (Transaction transaction : masterData) {
+            if (isSendMoneyType(transaction.getType())) {
+                transferOnly.add(transaction);
+            }
+        }
+        trxTable.setItems(FXCollections.observableArrayList(transferOnly));
+        if (transactionCountLabel != null) {
+            transactionCountLabel.setText("Transactions: " + transferOnly.size());
+        }
+    }
+
+    private boolean isSendMoneyType(String rawType) {
+        if (rawType == null) {
+            return false;
+        }
+        String normalized = rawType.trim().toUpperCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
+        return normalized.contains("TRANSFER") || "SEND_MONEY".equals(normalized) || "SENDMONEY".equals(normalized);
     }
 
     @FXML

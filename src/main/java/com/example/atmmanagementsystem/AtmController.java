@@ -22,7 +22,13 @@ public class AtmController {
         FP_ENTER_CARD, FP_ENTER_NID, FP_NEW_PIN, FP_CONFIRM_PIN,
         CHANGE_PIN_INPUT, CHANGE_PIN_CONFIRM,
         DISABLE_ENTER_CARD, DISABLE_ENTER_NID,
-        DEPOSIT_NO_CARD_ACCOUNT, DEPOSIT_NO_CARD_NID, DEPOSIT_NO_CARD_AMOUNT
+        DEPOSIT_NO_CARD_ACCOUNT, DEPOSIT_NO_CARD_NID, DEPOSIT_NO_CARD_AMOUNT,
+        TRANSFER_TYPE_SELECT, TRANSFER_ACCOUNT_INPUT, TRANSFER_CARD_INPUT, TRANSFER_AMOUNT_INPUT
+    }
+
+    private enum TransferType {
+        ACCOUNT,
+        CARD
     }
 
     @FXML
@@ -60,6 +66,8 @@ public class AtmController {
     private String tempNidProof; // Store NID proof for reset/block operations
     private String cardlessDepositAccountNumber; // Store account number for cardless deposit
     private String cardlessDepositNidProof; // Store NID proof for cardless deposit
+    private TransferType transferType;
+    private String transferRecipientValue;
     private int failedAttempts = 0;
 
     private final ApiAccountService apiService = (ApiAccountService) AccountService.getInstance();
@@ -141,6 +149,18 @@ public class AtmController {
         } else if (currentMode == AtmMode.DEPOSIT_NO_CARD_AMOUNT) {
             System.out.println("Routing to handleCardlessDepositAmountInput");
             handleCardlessDepositAmountInput(input);
+        } else if (currentMode == AtmMode.TRANSFER_TYPE_SELECT) {
+            System.out.println("Routing to TRANSFER_TYPE_SELECT prompt");
+            screenMessage.setText("Choose transfer type: L1(Account) or R1(Card).");
+        } else if (currentMode == AtmMode.TRANSFER_ACCOUNT_INPUT) {
+            System.out.println("Routing to handleTransferAccountInput");
+            handleTransferAccountInput(input);
+        } else if (currentMode == AtmMode.TRANSFER_CARD_INPUT) {
+            System.out.println("Routing to handleTransferCardInput");
+            handleTransferCardInput(input);
+        } else if (currentMode == AtmMode.TRANSFER_AMOUNT_INPUT) {
+            System.out.println("Routing to handleTransferAmountInput");
+            handleTransferAmountInput(input);
         } else if (currentMode == AtmMode.WELCOME) {
             System.out.println("Routing to WELCOME handler");
             screenMessage.setText("Please select an option.");
@@ -608,10 +628,130 @@ public class AtmController {
         }
     }
 
+    private void handleTransferAccountInput(String input) {
+        if (input == null || !input.matches("\\d{12}")) {
+            screenMessage.setText("Invalid account number. Enter exactly 12 digits.");
+            return;
+        }
+
+        transferType = TransferType.ACCOUNT;
+        transferRecipientValue = input;
+        currentMode = AtmMode.TRANSFER_AMOUNT_INPUT;
+        screenMessage.setText("Enter Amount (Min 500, Multiple of 500, Max 500000):");
+        updateOptions();
+    }
+
+    private void handleTransferCardInput(String input) {
+        if (input == null || !input.matches("\\d{16}")) {
+            screenMessage.setText("Invalid card number. Enter exactly 16 digits.");
+            return;
+        }
+
+        if (currentCardNumber != null && currentCardNumber.equals(input)) {
+            screenMessage.setText("You cannot transfer to your own card.");
+            return;
+        }
+
+        transferType = TransferType.CARD;
+        transferRecipientValue = input;
+        currentMode = AtmMode.TRANSFER_AMOUNT_INPUT;
+        screenMessage.setText("Enter Amount (Min 500, Multiple of 500, Max 500000):");
+        updateOptions();
+    }
+
+    private void handleTransferAmountInput(String input) {
+        if (transferType == null || transferRecipientValue == null || transferRecipientValue.isEmpty()) {
+            currentMode = AtmMode.LOGGED_IN;
+            screenMessage.setText("Transfer session expired. Please start again.");
+            updateOptions();
+            return;
+        }
+
+        if (input == null || !input.matches("\\d+")) {
+            screenMessage.setText("Invalid amount. Enter numbers only.");
+            return;
+        }
+
+        try {
+            long amount = Long.parseLong(input);
+
+            if (amount < 500) {
+                screenMessage.setText("Minimum transfer amount is 500 TK.");
+                return;
+            }
+            if (amount % 500 != 0) {
+                screenMessage.setText("Amount must be a multiple of 500.");
+                return;
+            }
+            if (amount > 500000) {
+                screenMessage.setText("Maximum amount per transfer is 500000 TK.");
+                return;
+            }
+
+            if (transferType == TransferType.ACCOUNT) {
+                apiService.transferToAccount(currentCardNumber, transferRecipientValue, amount);
+            } else {
+                apiService.transferToCard(currentCardNumber, transferRecipientValue, amount);
+            }
+
+            ((ApiAccountService) apiService).refreshSessionBalance(currentCardNumber);
+
+            String targetLabel = transferType == TransferType.ACCOUNT ? "account" : "card";
+            String successMsg = "Transfer successful. Sent " + amount + " TK to " + targetLabel + " "
+                    + transferRecipientValue + ". Balance: "
+                    + String.format("%.2f", SessionManager.getInstance().getBalance()) + " TK";
+
+            transferType = null;
+            transferRecipientValue = null;
+            currentMode = AtmMode.LOGGED_IN;
+            screenMessage.setText(successMsg);
+            updateOptions();
+        } catch (Exception e) {
+            String msg = e.getMessage() == null ? "Transfer failed" : e.getMessage();
+            handleTransferError(msg);
+        }
+    }
+
+    private void handleTransferError(String errorMessage) {
+        String message = errorMessage;
+        if (message.startsWith("HTTP_")) {
+            int separator = message.indexOf(":");
+            String statusPart = separator > 0 ? message.substring(5, separator) : "";
+            if ("401".equals(statusPart) || "403".equals(statusPart)) {
+                resetSession();
+                screenMessage.setText("Authorization failed. Please login again.");
+                return;
+            }
+            if (separator > 0 && separator + 1 < message.length()) {
+                message = message.substring(separator + 1).trim();
+            }
+        }
+        screenMessage.setText(message);
+    }
+
     private void handleOption(String optionCode) {
         switch (currentMode) {
             case WELCOME:
                 handleWelcomeOptions(optionCode);
+                break;
+            case TRANSFER_TYPE_SELECT:
+                if (optionCode.equals("L1")) {
+                    transferType = TransferType.ACCOUNT;
+                    currentMode = AtmMode.TRANSFER_ACCOUNT_INPUT;
+                    screenMessage.setText("Enter Recipient Account Number (12 digits):");
+                    updateOptions();
+                } else if (optionCode.equals("R1")) {
+                    transferType = TransferType.CARD;
+                    currentMode = AtmMode.TRANSFER_CARD_INPUT;
+                    screenMessage.setText("Enter Recipient Card Number (16 digits):");
+                    updateOptions();
+                } else if (optionCode.equals("R4")) {
+                    transferType = null;
+                    transferRecipientValue = null;
+                    currentMode = AtmMode.LOGGED_IN;
+                    screenMessage.setText("Transfer Cancelled.");
+                    updateOptions();
+                }
                 break;
             case CARD_INPUT:
             case PIN_INPUT:
@@ -626,11 +766,20 @@ public class AtmController {
             case DEPOSIT_NO_CARD_ACCOUNT:
             case DEPOSIT_NO_CARD_NID:
             case DEPOSIT_NO_CARD_AMOUNT:
+            case TRANSFER_ACCOUNT_INPUT:
+            case TRANSFER_CARD_INPUT:
+            case TRANSFER_AMOUNT_INPUT:
                 // We'll allow "Exit" or "Cancel" if mapped
                 if (optionCode.equals("R4")) { // Assume R4 is Exit/Cancel roughly
                     // If in txn mode, go back to logged in? Or Eject?
-                    if (currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT) {
+                    if (currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT
+                            || currentMode == AtmMode.TRANSFER_TYPE_SELECT
+                            || currentMode == AtmMode.TRANSFER_ACCOUNT_INPUT
+                            || currentMode == AtmMode.TRANSFER_CARD_INPUT
+                            || currentMode == AtmMode.TRANSFER_AMOUNT_INPUT) {
                         currentMode = AtmMode.LOGGED_IN;
+                        transferType = null;
+                        transferRecipientValue = null;
                         screenMessage.setText("Transaction Cancelled.");
                         updateOptions();
                     } else {
@@ -698,7 +847,10 @@ public class AtmController {
             case "R2": // Eject Card
                 ejectCard();
                 break;
-            case "L3": // Change PIN
+            case "L3": // Send Money
+                enterTransferMode();
+                break;
+            case "L4": // Change PIN
                 currentMode = AtmMode.CHANGE_PIN_INPUT;
                 tempNewPin = null;
                 screenMessage.setText("Enter New PIN (4 digits):");
@@ -708,6 +860,14 @@ public class AtmController {
                 loadMiniStatement();
                 break;
         }
+    }
+
+    private void enterTransferMode() {
+        transferType = null;
+        transferRecipientValue = null;
+        currentMode = AtmMode.TRANSFER_TYPE_SELECT;
+        screenMessage.setText("Send Money: Choose L1(Account) or R1(Card).");
+        updateOptions();
     }
 
     private void loadCreateAccount() {
@@ -762,6 +922,8 @@ public class AtmController {
         tempNidProof = null;
         cardlessDepositAccountNumber = null;
         cardlessDepositNidProof = null;
+        transferType = null;
+        transferRecipientValue = null;
         failedAttempts = 0;
         currentMode = AtmMode.WELCOME;
         
@@ -829,8 +991,13 @@ public class AtmController {
             optionRight1.setText("Deposit");
             optionLeft2.setText("Check Balance");
             optionRight2.setText("Eject Card");
-            optionLeft3.setText("Change PIN");
+            optionLeft3.setText("Send Money");
             optionRight3.setText("Mini Statement");
+            optionLeft4.setText("Change PIN");
+        } else if (currentMode == AtmMode.TRANSFER_TYPE_SELECT) {
+            optionLeft1.setText("To Account");
+            optionRight1.setText("To Card");
+            optionRight4.setText("Cancel");
         } else if (currentMode == AtmMode.CARD_INPUT || currentMode == AtmMode.PIN_INPUT ||
                 currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT ||
                 currentMode == AtmMode.FP_ENTER_CARD || currentMode == AtmMode.FP_ENTER_NID ||
@@ -838,7 +1005,9 @@ public class AtmController {
                 currentMode == AtmMode.CHANGE_PIN_INPUT || currentMode == AtmMode.CHANGE_PIN_CONFIRM ||
                 currentMode == AtmMode.DISABLE_ENTER_CARD || currentMode == AtmMode.DISABLE_ENTER_NID ||
                 currentMode == AtmMode.DEPOSIT_NO_CARD_ACCOUNT || currentMode == AtmMode.DEPOSIT_NO_CARD_NID
-                || currentMode == AtmMode.DEPOSIT_NO_CARD_AMOUNT) {
+                || currentMode == AtmMode.DEPOSIT_NO_CARD_AMOUNT
+                || currentMode == AtmMode.TRANSFER_ACCOUNT_INPUT || currentMode == AtmMode.TRANSFER_CARD_INPUT
+                || currentMode == AtmMode.TRANSFER_AMOUNT_INPUT) {
             optionRight4.setText("Cancel");
         }
     }
