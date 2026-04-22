@@ -77,13 +77,13 @@ public class MiniStatementController {
     }
 
     private void loadData() {
-        loadData(null, null, null, null);
+        loadData(null, null, null, null, false);
     }
 
     /**
      * Load transactions with optional filters
      */
-    private void loadData(String type, String dateFrom, String dateTo, Integer limit) {
+    private void loadData(String type, String dateFrom, String dateTo, Integer limit, boolean applyTransferFilter) {
         if (currentCardNumber == null) {
             System.err.println("No card number set, cannot load transactions");
             if (transactionCountLabel != null) {
@@ -96,37 +96,42 @@ public class MiniStatementController {
         System.out.println("Filters - Type: " + type + ", DateFrom: " + dateFrom + 
                           ", DateTo: " + dateTo + ", Limit: " + limit);
         
-        try {
-            System.out.println("Calling API service...");
-            List<Transaction> list = apiService.getTransactions(currentCardNumber, type, dateFrom, dateTo, limit);
-            System.out.println("API returned " + list.size() + " transactions");
-            
-            if (list.isEmpty()) {
-                System.out.println("WARNING: No transactions found for this card");
-                if (transactionCountLabel != null) {
-                    transactionCountLabel.setText("No transactions found");
-                }
-            } else {
-                System.out.println("First transaction: " + list.get(0));
-                if (transactionCountLabel != null) {
-                    transactionCountLabel.setText("Transactions: " + list.size());
-                }
+        if (transactionCountLabel != null) {
+            transactionCountLabel.setText("Loading transactions...");
+        }
+        
+        javafx.concurrent.Task<List<Transaction>> task = new javafx.concurrent.Task<List<Transaction>>() {
+            @Override
+            protected List<Transaction> call() throws Exception {
+                return apiService.getTransactions(currentCardNumber, type, dateFrom, dateTo, limit);
             }
-            
+        };
+
+        task.setOnSucceeded(e -> {
+            List<Transaction> list = task.getValue();
             masterData.clear();
             masterData.setAll(list);
-            System.out.println("MasterData size: " + masterData.size());
-            trxTable.setItems(masterData);
-            System.out.println("Table items count: " + trxTable.getItems().size());
-            System.out.println("Table visible: " + trxTable.isVisible());
-            System.out.println("Table columns: " + trxTable.getColumns().size());
-        } catch (Exception e) {
-            System.err.println("Failed to load transactions: " + e.getMessage());
-            if (transactionCountLabel != null) {
-                transactionCountLabel.setText("Error: " + e.getMessage());
+            
+            if (applyTransferFilter) {
+                applyLocalTransferFilter();
+            } else {
+                trxTable.setItems(masterData);
+                if (transactionCountLabel != null) {
+                    transactionCountLabel.setText(list.isEmpty() ? "No transactions found" : "Transactions: " + list.size());
+                }
             }
-            e.printStackTrace();
-        }
+        });
+
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            System.err.println("Failed to load transactions: " + ex.getMessage());
+            if (transactionCountLabel != null) {
+                transactionCountLabel.setText("Error: " + ex.getMessage());
+            }
+            ex.printStackTrace();
+        });
+
+        new Thread(task).start();
     }
 
     @FXML
@@ -174,10 +179,9 @@ public class MiniStatementController {
         // For send-money filter, fetch by date and then match transfer aliases locally
         // because backends may use different names (e.g., TRANSFER, SEND_MONEY).
         if (transferFilterSelected) {
-            loadData(null, dateFrom, dateTo, limit);
-            applyLocalTransferFilter();
+            loadData(null, dateFrom, dateTo, limit, true);
         } else {
-            loadData(type, dateFrom, dateTo, limit);
+            loadData(type, dateFrom, dateTo, limit, false);
         }
     }
 

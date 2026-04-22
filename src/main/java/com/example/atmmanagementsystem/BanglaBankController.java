@@ -140,13 +140,25 @@ public class BanglaBankController {
             return;
         }
 
-        try {
-            Account acc = apiService.createAccount(name, phone, deposit, email, gender, profession, nationality,
-                    nid, address);
+        javafx.concurrent.Task<Account> task = new javafx.concurrent.Task<Account>() {
+            @Override
+            protected Account call() throws Exception {
+                return apiService.createAccount(name, phone, deposit, email, gender, profession, nationality,
+                        nid, address);
+            }
+        };
 
+        task.setOnRunning(e -> {
+            errorLabel.setText("Processing...");
+            createResultLabel.setText("Processing...");
+        });
+
+        task.setOnSucceeded(e -> {
+            Account acc = task.getValue();
             resultTitle.setText("Successfully Created Account");
             resultContainer.setVisible(true);
             resultContainer.setManaged(true);
+            errorLabel.setText("");
 
             StringBuilder out = new StringBuilder();
             out.append("Name:        ").append(acc.getName()).append("\n");
@@ -165,15 +177,20 @@ public class BanglaBankController {
 
             outputArea.setText(out.toString());
             createResultLabel.setText("New card: " + acc.getCardNumber() + "   PIN: " + acc.getPin());
+        });
 
-            // after creation, prefill card input so user can login immediately
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            createResultLabel.setText("");
+            if (ex instanceof IllegalArgumentException) {
+                errorLabel.setText(ex.getMessage());
+            } else {
+                errorLabel.setText("Failed to create account: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        });
 
-        } catch (IllegalArgumentException e) {
-            errorLabel.setText(e.getMessage());
-        } catch (Exception e) {
-            errorLabel.setText("Failed to create account: " + e.getMessage());
-            e.printStackTrace();
-        }
+        new Thread(task).start();
     }
 
     @FXML
