@@ -884,6 +884,19 @@ public class AtmController {
         }
     }
 
+    @FXML
+    protected void onMoreDetails() {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                    getClass().getResource("info.fxml"));
+            javafx.scene.Parent root = loader.load();
+            screenMessage.getScene().setRoot(root);
+        } catch (Exception e) {
+            e.printStackTrace();
+            screenMessage.setText("Error loading Info screen.");
+        }
+    }
+
     private void loadMiniStatement() {
         try {
             System.out.println("=== Loading Mini Statement ===");

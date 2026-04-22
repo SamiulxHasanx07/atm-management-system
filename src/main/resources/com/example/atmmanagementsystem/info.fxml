@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.geometry.Pos?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TextArea?>
+
+<VBox xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.atmmanagementsystem.InfoController" alignment="CENTER" stylesheets="@atm.css" styleClass="main-container">
+    <VBox alignment="TOP_CENTER" spacing="15" styleClass="atm-shell" maxWidth="600" VBox.vgrow="ALWAYS">
+        <padding>
+            <Insets top="30" right="30" bottom="30" left="30" />
+        </padding>
+
+        <HBox alignment="CENTER_LEFT">
+            <Button text="← Back" onAction="#onBack" styleClass="action-btn" />
+        </HBox>
+
+        <Label text="Developer Information" styleClass="atm-title" />
+
+        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-background: transparent;">
+            <VBox spacing="20" style="-fx-padding: 20;">
+                <VBox spacing="5">
+                    <TextField text="ATM Management System - Bangla Bank" editable="false" style="-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: white; -fx-background-color: transparent; -fx-padding: 0;" />
+                </VBox>
+
+                <VBox spacing="5">
+                    <Label text="👤 Developer Information" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #4da6ff;" />
+                    <TextArea text="Samiul Hasan&#10;Student ID: 42240101227&#10;Semester: Spring 2026&#10;Section: 7A" editable="false" wrapText="true" prefRowCount="4" style="-fx-text-fill: white; -fx-background-color: transparent; -fx-control-inner-background: transparent; -fx-padding: 0;" />
+                </VBox>
+
+                <VBox spacing="5">
+                    <Label text="📌 Project Overview" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #4da6ff;" />
+                    <TextArea text="This application is a JavaFX-based ATM Management System designed to simulate core banking operations such as account management, deposits, withdrawals, balance inquiry, and transaction history.&#10;&#10;The system follows a structured design approach with separation of frontend and backend logic for better maintainability and scalability." editable="false" wrapText="true" prefRowCount="6" style="-fx-text-fill: white; -fx-background-color: transparent; -fx-control-inner-background: transparent; -fx-padding: 0;" />
+                </VBox>
+
+                <VBox spacing="5">
+                    <Label text="🔗 GitHub Resources" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #4da6ff;" />
+                    
+                    <Label text="Profile:" style="-fx-text-fill: #e0e0e0;" />
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Hyperlink text="https://github.com/SamiulxHasanx07" onAction="#openProfileLink" style="-fx-text-fill: #007bff; -fx-padding: 0;" />
+                    </HBox>
+                    
+                    <Label text="Frontend Repository:" style="-fx-text-fill: #e0e0e0; -fx-padding: 10 0 0 0;" />
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Hyperlink text="https://github.com/SamiulxHasanx07/atm-management-system" onAction="#openFrontendRepoLink" style="-fx-text-fill: #007bff; -fx-padding: 0;" />
+                    </HBox>
+                    
+                    <Label text="Backend Repository:" style="-fx-text-fill: #e0e0e0; -fx-padding: 10 0 0 0;" />
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Hyperlink text="https://github.com/SamiulxHasanx07/atm-management-system-backend" onAction="#openBackendRepoLink" style="-fx-text-fill: #007bff; -fx-padding: 0;" />
+                    </HBox>
+                </VBox>
+
+                <VBox spacing="5">
+                    <Label text="🌐 Live System" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #4da6ff;" />
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Hyperlink text="https://atm-management-system-backend.vercel.app/" onAction="#openLiveSystemLink" style="-fx-text-fill: #007bff; -fx-padding: 0;" />
+                    </HBox>
+                </VBox>
+            </VBox>
+        </ScrollPane>
+    </VBox>
+</VBox>

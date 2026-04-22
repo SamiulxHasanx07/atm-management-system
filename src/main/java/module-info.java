@@ -13,6 +13,7 @@ module com.example.atmmanagementsystem {
     requires java.sql;
     requires java.net.http;
     requires com.google.gson;
+    requires java.desktop;
 
     opens com.example.atmmanagementsystem to javafx.fxml;
     opens com.example.atmmanagementsystem.api.dto to com.google.gson;
