@@ -424,7 +424,7 @@ public class AtmController {
 
         currentCardNumber = inputCard;
         currentMode = AtmMode.DISABLE_ENTER_NID;
-        screenMessage.setText("Enter NID Proof to BLOCK:");
+        screenMessage.setText("Enter NID Proof to BLOCK (Last 4 Digits):");
         updateOptions();
     }
 
