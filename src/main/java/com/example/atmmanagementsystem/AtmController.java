@@ -122,12 +122,6 @@ public class AtmController {
         } else if (currentMode == AtmMode.FP_ENTER_NID) {
             System.out.println("Routing to handleForgotPinNidInput");
             handleForgotPinNidInput(input);
-        } else if (currentMode == AtmMode.FP_NEW_PIN) {
-            System.out.println("Routing to handleForgotPinNewPinInput");
-            handleForgotPinNewPinInput(input);
-        } else if (currentMode == AtmMode.FP_CONFIRM_PIN) {
-            System.out.println("Routing to handleForgotPinConfirmInput");
-            handleForgotPinConfirmInput(input);
         } else if (currentMode == AtmMode.CHANGE_PIN_INPUT) {
             System.out.println("Routing to handleChangePinNewInput");
             handleChangePinNewInput(input);
@@ -192,24 +186,42 @@ public class AtmController {
         }
 
         runApiTask(() -> apiService.login(currentCardNumber, inputPin),
-            loginResponse -> {
-                if (loginResponse.isSuccess() && loginResponse.getToken() != null) {
-                    // Success - token and user info are already stored in SessionManager by ApiService
-                    currentMode = AtmMode.LOGGED_IN;
-                    failedAttempts = 0;
+                loginResponse -> {
+                    if (loginResponse.isSuccess() && loginResponse.getToken() != null) {
+                        // Success - token and user info are already stored in SessionManager by
+                        // ApiService
+                        currentMode = AtmMode.LOGGED_IN;
+                        failedAttempts = 0;
 
-                    // Get username from session
-                    String userName = SessionManager.getInstance().getName();
-                    if (userName == null || userName.isEmpty()) {
-                        userName = "User";
+                        // Get username from session
+                        String userName = SessionManager.getInstance().getName();
+                        if (userName == null || userName.isEmpty()) {
+                            userName = "User";
+                        }
+                        screenMessage.setText("Welcome, " + userName);
+                        updateOptions();
+                    } else {
+                        // Login failed - show error message from API
+                        String errorMsg = loginResponse.getMessage();
+                        if (errorMsg == null || errorMsg.isEmpty()) {
+                            errorMsg = "Login failed";
+                        }
+
+                        failedAttempts++;
+                        if (failedAttempts >= 3) {
+                            // Backend automatically blocks account after 3 failed attempts
+                            screenMessage.setText("Wrong PIN 3 times. CARD BLOCKED. Contact bank.");
+                            resetSession();
+                        } else {
+                            screenMessage.setText(errorMsg + " (Attempt " + failedAttempts + "/3)");
+                        }
                     }
-                    screenMessage.setText("Welcome, " + userName);
-                    updateOptions();
-                } else {
-                    // Login failed - show error message from API
-                    String errorMsg = loginResponse.getMessage();
+                },
+                e -> {
+                    // Show the actual error message from the API
+                    String errorMsg = e.getMessage();
                     if (errorMsg == null || errorMsg.isEmpty()) {
-                        errorMsg = "Login failed";
+                        errorMsg = "Login failed. Please try again.";
                     }
 
                     failedAttempts++;
@@ -220,25 +232,7 @@ public class AtmController {
                     } else {
                         screenMessage.setText(errorMsg + " (Attempt " + failedAttempts + "/3)");
                     }
-                }
-            },
-            e -> {
-                // Show the actual error message from the API
-                String errorMsg = e.getMessage();
-                if (errorMsg == null || errorMsg.isEmpty()) {
-                    errorMsg = "Login failed. Please try again.";
-                }
-
-                failedAttempts++;
-                if (failedAttempts >= 3) {
-                    // Backend automatically blocks account after 3 failed attempts
-                    screenMessage.setText("Wrong PIN 3 times. CARD BLOCKED. Contact bank.");
-                    resetSession();
-                } else {
-                    screenMessage.setText(errorMsg + " (Attempt " + failedAttempts + "/3)");
-                }
-            }
-        );
+                });
     }
 
     private void handleDepositInput(String input) {
@@ -247,16 +241,17 @@ public class AtmController {
             System.out.println("Current Card Number: " + currentCardNumber);
             System.out.println("Session: " + SessionManager.getInstance());
             System.out.println("Amount: " + input);
-            
+
             double amount = Double.parseDouble(input);
-            
+
             runApiTaskVoid(() -> {
                 apiService.deposit(currentCardNumber, amount);
                 ((ApiAccountService) apiService).refreshSessionBalance(currentCardNumber);
             }, () -> {
                 String balanceStr = String.format("%.2f", SessionManager.getInstance().getBalance());
                 System.out.println("Deposit successful. New balance from API: " + balanceStr);
-                screenMessage.setText("Deposited " + String.format("%.0f", amount) + " TK. Balance: " + balanceStr + " TK");
+                screenMessage
+                        .setText("Deposited " + String.format("%.0f", amount) + " TK. Balance: " + balanceStr + " TK");
                 currentMode = AtmMode.LOGGED_IN;
                 updateOptions();
             }, e -> {
@@ -280,16 +275,17 @@ public class AtmController {
             System.out.println("Current Card Number: " + currentCardNumber);
             System.out.println("Session: " + SessionManager.getInstance());
             System.out.println("Amount: " + input);
-            
+
             double amount = Double.parseDouble(input);
-            
+
             runApiTaskVoid(() -> {
                 apiService.withdraw(currentCardNumber, amount);
                 ((ApiAccountService) apiService).refreshSessionBalance(currentCardNumber);
             }, () -> {
                 String balanceStr = String.format("%.2f", SessionManager.getInstance().getBalance());
                 System.out.println("Withdraw successful. New balance from API: " + balanceStr);
-                screenMessage.setText("Withdrawn " + String.format("%.0f", amount) + " TK. Balance: " + balanceStr + " TK");
+                screenMessage
+                        .setText("Withdrawn " + String.format("%.0f", amount) + " TK. Balance: " + balanceStr + " TK");
                 currentMode = AtmMode.LOGGED_IN;
                 updateOptions();
             }, e -> {
@@ -312,104 +308,29 @@ public class AtmController {
             screenMessage.setText("Invalid Card Number. Try again.");
             return;
         }
-        
-        runApiTask(() -> apiService.findByCardNumber(inputCard).orElse(null),
-            acc -> {
-                if (acc == null) {
-                    screenMessage.setText("Card not found. Please try again.");
-                    return;
-                }
 
-                // Card found, ask for identity
-                currentCardNumber = inputCard;
-                currentMode = AtmMode.FP_ENTER_NID;
-
-                String nid = acc.getNid();
-                String maskedNid = "****";
-                if (nid != null && nid.length() > 4) {
-                    maskedNid = nid.substring(0, nid.length() - 4) + "****";
-                }
-
-                screenMessage.setText("Enter Last 4 Digits of NID " + maskedNid + ":");
-                updateOptions();
-            },
-            e -> screenMessage.setText("Error: " + e.getMessage())
-        );
-    }
-
-    private void handleForgotPinNidInput(String input) {
-        if (input == null || !input.matches("\\d{4}")) {
-            screenMessage.setText("Enter exactly 4 digits of NID.");
-            return;
-        }
-
-        runApiTask(() -> apiService.findByCardNumber(currentCardNumber).orElse(null),
-            acc -> {
-                if (acc == null) {
-                    resetSession();
-                    screenMessage.setText("System Error: Card not found.");
-                    return;
-                }
-
-                String fullNid = acc.getNid();
-                if (fullNid == null || fullNid.length() < 4) {
-                    screenMessage.setText("NID data invalid. Contact Bank.");
-                    return;
-                }
-
-                String last4 = fullNid.substring(fullNid.length() - 4);
-                if (input.equals(last4)) {
-                    // Success match - store NID for later use
-                    tempNidProof = input;
-                    currentMode = AtmMode.FP_NEW_PIN;
-                    screenMessage.setText("Verified! Enter New PIN (4 digits):");
-                    updateOptions();
-                } else {
-                    screenMessage.setText("Incorrect NID digits. Try again.");
-                }
-            },
-            e -> screenMessage.setText("Error: " + e.getMessage())
-        );
-    }
-
-    private void handleForgotPinNewPinInput(String newPin) {
-        if (newPin == null || !newPin.matches("\\d{4}")) {
-            screenMessage.setText("Invalid PIN format. Enter 4 digits.");
-            return;
-        }
-        tempNewPin = newPin;
-        currentMode = AtmMode.FP_CONFIRM_PIN;
-        screenMessage.setText("Confirm New PIN:");
+        currentCardNumber = inputCard;
+        currentMode = AtmMode.FP_ENTER_NID;
+        screenMessage.setText("Enter NID Proof:");
         updateOptions();
     }
 
-    private void handleForgotPinConfirmInput(String confirmPin) {
-        if (confirmPin == null || !confirmPin.equals(tempNewPin)) {
-            screenMessage.setText("PIN mismatch. Start over.");
-            currentMode = AtmMode.FP_NEW_PIN;
-            screenMessage.setText("Enter New PIN (4 digits):");
-            tempNewPin = null;
-            updateOptions();
+    private void handleForgotPinNidInput(String input) {
+        if (input == null || input.isEmpty()) {
+            screenMessage.setText("Enter valid NID proof.");
             return;
         }
 
-        runApiTaskVoid(() -> apiService.resetPin(currentCardNumber, tempNidProof),
-            () -> {
-                screenMessage.setText("PIN Reset Success! Please Login.");
-                tempNewPin = null;
-                tempNidProof = null;
-                resetSession();
-            },
-            e -> {
-                if (e instanceof IllegalArgumentException) {
-                    screenMessage.setText(e.getMessage());
-                    currentMode = AtmMode.FP_NEW_PIN;
-                    updateOptions();
-                } else {
+        runApiTask(() -> apiService.resetPin(currentCardNumber, input),
+                newPin -> {
+                    resetSession();
+                    screenMessage.setText("Success! New PIN: " + newPin + "\nPlease save it and login.");
+                },
+                e -> {
                     screenMessage.setText("Error: " + e.getMessage());
-                }
-            }
-        );
+                    currentMode = AtmMode.FP_ENTER_NID;
+                    updateOptions();
+                });
     }
 
     private void handleChangePinNewInput(String newPin) {
@@ -436,22 +357,21 @@ public class AtmController {
         }
 
         runApiTaskVoid(() -> apiService.updatePin(currentCardNumber, confirmPin),
-            () -> {
-                screenMessage.setText("PIN Changed Successfully.");
-                currentMode = AtmMode.LOGGED_IN;
-                tempNewPin = null;
-                updateOptions();
-            },
-            e -> {
-                if (e instanceof IllegalArgumentException) {
-                    screenMessage.setText(e.getMessage());
-                    currentMode = AtmMode.CHANGE_PIN_INPUT; // Let them try again
+                () -> {
+                    screenMessage.setText("PIN Changed Successfully.");
+                    currentMode = AtmMode.LOGGED_IN;
+                    tempNewPin = null;
                     updateOptions();
-                } else {
-                    screenMessage.setText("Error: " + e.getMessage());
-                }
-            }
-        );
+                },
+                e -> {
+                    if (e instanceof IllegalArgumentException) {
+                        screenMessage.setText(e.getMessage());
+                        currentMode = AtmMode.CHANGE_PIN_INPUT; // Let them try again
+                        updateOptions();
+                    } else {
+                        screenMessage.setText("Error: " + e.getMessage());
+                    }
+                });
     }
 
     // Left Side Buttons
@@ -501,63 +421,25 @@ public class AtmController {
             screenMessage.setText("Invalid Card Number. Try again.");
             return;
         }
-        
-        runApiTask(() -> apiService.findByCardNumber(inputCard).orElse(null),
-            acc -> {
-                if (acc == null) {
-                    screenMessage.setText("Card not found. Please try again.");
-                    return;
-                }
-                currentCardNumber = inputCard;
-                currentMode = AtmMode.DISABLE_ENTER_NID;
 
-                String nid = acc.getNid();
-                String maskedNid = "****";
-                if (nid != null && nid.length() > 4) {
-                    maskedNid = nid.substring(0, nid.length() - 4) + "****";
-                }
-
-                screenMessage.setText("Enter Last 4 Digits of NID " + maskedNid + " to BLOCK:");
-                updateOptions();
-            },
-            e -> screenMessage.setText("Error: " + e.getMessage())
-        );
+        currentCardNumber = inputCard;
+        currentMode = AtmMode.DISABLE_ENTER_NID;
+        screenMessage.setText("Enter NID Proof to BLOCK:");
+        updateOptions();
     }
 
     private void handleDisableEnterNid(String input) {
-        if (input == null || !input.matches("\\d{4}")) {
-            screenMessage.setText("Enter exactly 4 digits of NID.");
+        if (input == null || input.isEmpty()) {
+            screenMessage.setText("Enter valid NID proof.");
             return;
         }
-        
-        runApiTask(() -> {
-            Account acc = apiService.findByCardNumber(currentCardNumber).orElse(null);
-            if (acc != null) {
-                String fullNid = acc.getNid();
-                if (fullNid != null && fullNid.length() >= 4) {
-                    String last4 = fullNid.substring(fullNid.length() - 4);
-                    if (input.equals(last4)) {
-                        apiService.blockAccount(currentCardNumber, input);
-                        return "SUCCESS";
-                    } else {
-                        return "MISMATCH";
-                    }
-                }
-                return "INVALID_DATA";
-            }
-            return "NOT_FOUND";
-        }, res -> {
-            if ("SUCCESS".equals(res)) {
-                screenMessage.setText("Card Successfully BLOCKED. Please contact bank.");
-                resetSession();
-            } else if ("MISMATCH".equals(res)) {
-                screenMessage.setText("Incorrect NID digits. Try again.");
-            } else if ("INVALID_DATA".equals(res)) {
-                screenMessage.setText("NID data invalid. Contact Bank.");
-            } else {
-                resetSession(); // NOT_FOUND
-            }
-        }, e -> screenMessage.setText("Error blocking card: " + e.getMessage()));
+
+        runApiTaskVoid(() -> apiService.blockAccount(currentCardNumber, input),
+                () -> {
+                    screenMessage.setText("Card Successfully BLOCKED. Please contact bank.");
+                    resetSession();
+                },
+                e -> screenMessage.setText("Error blocking card: " + e.getMessage()));
     }
 
     private void handleCardlessDepositAccountInput(String accountNum) {
@@ -577,7 +459,7 @@ public class AtmController {
             screenMessage.setText("Enter exactly 4 digits.");
             return;
         }
-        
+
         // Store NID proof and proceed to amount entry
         cardlessDepositNidProof = input;
         currentMode = AtmMode.DEPOSIT_NO_CARD_AMOUNT;
@@ -590,54 +472,54 @@ public class AtmController {
         System.out.println("Input: " + input);
         System.out.println("Account Number: " + cardlessDepositAccountNumber);
         System.out.println("NID Proof: " + cardlessDepositNidProof);
-        
+
         try {
             double amount = Double.parseDouble(input);
-            
+
             System.out.println("=== CARDLESS DEPOSIT ===");
             System.out.println("Account Number: " + cardlessDepositAccountNumber);
             System.out.println("NID Proof: " + cardlessDepositNidProof);
             System.out.println("Amount: " + amount);
-            
+
             if (cardlessDepositAccountNumber == null || cardlessDepositAccountNumber.isEmpty()) {
                 screenMessage.setText("Error: Account number not found. Please start over.");
                 resetSession();
                 return;
             }
-            
+
             if (cardlessDepositNidProof == null || cardlessDepositNidProof.isEmpty()) {
                 screenMessage.setText("Error: NID verification failed. Please start over.");
                 resetSession();
                 return;
             }
-            
-            runApiTaskVoid(() -> apiService.cardlessDeposit(cardlessDepositAccountNumber, cardlessDepositNidProof, amount),
-                () -> {
-                    System.out.println("Cardless deposit successful");
-                    
-                    // Clear cardless deposit data
-                    cardlessDepositAccountNumber = null;
-                    cardlessDepositNidProof = null;
-                    
-                    // Store message before reset
-                    String successMsg = "Success! Deposited " + String.format("%.0f", amount) + " TK.";
-                    
-                    resetSession();
-                    
-                    // Set message after reset so it's visible
-                    screenMessage.setText(successMsg);
-                },
-                e -> {
-                    if (e instanceof IllegalArgumentException) {
-                        screenMessage.setText(e.getMessage());
-                        System.err.println("Cardless deposit validation error: " + e.getMessage());
-                    } else {
-                        screenMessage.setText("Cardless Deposit Error: " + e.getMessage());
-                        System.err.println("Cardless deposit exception:");
-                        e.printStackTrace();
-                    }
-                }
-            );
+
+            runApiTaskVoid(
+                    () -> apiService.cardlessDeposit(cardlessDepositAccountNumber, cardlessDepositNidProof, amount),
+                    () -> {
+                        System.out.println("Cardless deposit successful");
+
+                        // Clear cardless deposit data
+                        cardlessDepositAccountNumber = null;
+                        cardlessDepositNidProof = null;
+
+                        // Store message before reset
+                        String successMsg = "Success! Deposited " + String.format("%.0f", amount) + " TK.";
+
+                        resetSession();
+
+                        // Set message after reset so it's visible
+                        screenMessage.setText(successMsg);
+                    },
+                    e -> {
+                        if (e instanceof IllegalArgumentException) {
+                            screenMessage.setText(e.getMessage());
+                            System.err.println("Cardless deposit validation error: " + e.getMessage());
+                        } else {
+                            screenMessage.setText("Cardless Deposit Error: " + e.getMessage());
+                            System.err.println("Cardless deposit exception:");
+                            e.printStackTrace();
+                        }
+                    });
         } catch (NumberFormatException e) {
             screenMessage.setText("Invalid amount. Enter numbers only.");
             System.err.println("Cardless deposit amount parse error: " + e.getMessage());
@@ -779,8 +661,6 @@ public class AtmController {
             case WITHDRAW_INPUT:
             case FP_ENTER_CARD:
             case FP_ENTER_NID:
-            case FP_NEW_PIN:
-            case FP_CONFIRM_PIN:
             case DISABLE_ENTER_CARD:
             case DISABLE_ENTER_NID:
             case DEPOSIT_NO_CARD_ACCOUNT:
@@ -922,7 +802,7 @@ public class AtmController {
             System.out.println("=== Loading Mini Statement ===");
             System.out.println("Current Card Number: " + currentCardNumber);
             System.out.println("Session: " + SessionManager.getInstance());
-            
+
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
                     getClass().getResource("mini-statement.fxml"));
             javafx.scene.Parent root = loader.load();
@@ -959,10 +839,10 @@ public class AtmController {
         transferRecipientValue = null;
         failedAttempts = 0;
         currentMode = AtmMode.WELCOME;
-        
+
         // Clear session data
         SessionManager.getInstance().clearSession();
-        
+
         updateOptions();
     }
 
@@ -977,19 +857,18 @@ public class AtmController {
         this.failedAttempts = 0;
 
         runApiTask(() -> apiService.findByCardNumber(cardNumber).orElse(null),
-            acc -> {
-                if (acc != null) {
-                    screenMessage.setText("Welcome Back, " + acc.getName());
-                } else {
+                acc -> {
+                    if (acc != null) {
+                        screenMessage.setText("Welcome Back, " + acc.getName());
+                    } else {
+                        screenMessage.setText("Welcome Back.");
+                    }
+                    updateOptions();
+                },
+                e -> {
                     screenMessage.setText("Welcome Back.");
-                }
-                updateOptions();
-            },
-            e -> {
-                screenMessage.setText("Welcome Back.");
-                updateOptions();
-            }
-        );
+                    updateOptions();
+                });
     }
 
     private void enterDisableCardMode() {
@@ -1040,7 +919,6 @@ public class AtmController {
         } else if (currentMode == AtmMode.CARD_INPUT || currentMode == AtmMode.PIN_INPUT ||
                 currentMode == AtmMode.DEPOSIT_INPUT || currentMode == AtmMode.WITHDRAW_INPUT ||
                 currentMode == AtmMode.FP_ENTER_CARD || currentMode == AtmMode.FP_ENTER_NID ||
-                currentMode == AtmMode.FP_NEW_PIN || currentMode == AtmMode.FP_CONFIRM_PIN ||
                 currentMode == AtmMode.CHANGE_PIN_INPUT || currentMode == AtmMode.CHANGE_PIN_CONFIRM ||
                 currentMode == AtmMode.DISABLE_ENTER_CARD || currentMode == AtmMode.DISABLE_ENTER_NID ||
                 currentMode == AtmMode.DEPOSIT_NO_CARD_ACCOUNT || currentMode == AtmMode.DEPOSIT_NO_CARD_NID
@@ -1071,8 +949,7 @@ public class AtmController {
         loadingTimeline = new Timeline(
                 new KeyFrame(Duration.ZERO, e -> screenMessage.setText("Processing.")),
                 new KeyFrame(Duration.millis(300), e -> screenMessage.setText("Processing..")),
-                new KeyFrame(Duration.millis(600), e -> screenMessage.setText("Processing..."))
-        );
+                new KeyFrame(Duration.millis(600), e -> screenMessage.setText("Processing...")));
         loadingTimeline.setCycleCount(Timeline.INDEFINITE);
         loadingTimeline.play();
     }
@@ -1083,9 +960,9 @@ public class AtmController {
         }
     }
 
-    private <T> void runApiTask(java.util.concurrent.Callable<T> apiCall, 
-                                java.util.function.Consumer<T> onSuccess, 
-                                java.util.function.Consumer<Throwable> onError) {
+    private <T> void runApiTask(java.util.concurrent.Callable<T> apiCall,
+            java.util.function.Consumer<T> onSuccess,
+            java.util.function.Consumer<Throwable> onError) {
         startLoading();
         javafx.concurrent.Task<T> task = new javafx.concurrent.Task<T>() {
             @Override
@@ -1096,20 +973,22 @@ public class AtmController {
 
         task.setOnSucceeded(e -> {
             stopLoading();
-            if (onSuccess != null) onSuccess.accept(task.getValue());
+            if (onSuccess != null)
+                onSuccess.accept(task.getValue());
         });
 
         task.setOnFailed(e -> {
             stopLoading();
-            if (onError != null) onError.accept(task.getException());
+            if (onError != null)
+                onError.accept(task.getException());
         });
 
         new Thread(task).start();
     }
 
-    private void runApiTaskVoid(Runnable apiCall, 
-                                Runnable onSuccess, 
-                                java.util.function.Consumer<Throwable> onError) {
+    private void runApiTaskVoid(Runnable apiCall,
+            Runnable onSuccess,
+            java.util.function.Consumer<Throwable> onError) {
         startLoading();
         javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<Void>() {
             @Override
@@ -1121,12 +1000,14 @@ public class AtmController {
 
         task.setOnSucceeded(e -> {
             stopLoading();
-            if (onSuccess != null) onSuccess.run();
+            if (onSuccess != null)
+                onSuccess.run();
         });
 
         task.setOnFailed(e -> {
             stopLoading();
-            if (onError != null) onError.accept(task.getException());
+            if (onError != null)
+                onError.accept(task.getException());
         });
 
         new Thread(task).start();
